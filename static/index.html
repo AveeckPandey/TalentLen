@@ -5,6 +5,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Kasparro - AI Candidate Screening & Ranking</title>
   <script src="https://cdn.tailwindcss.com"></script>
+  <script src="/config.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <style>
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
@@ -55,9 +57,31 @@
             <span>JSON</span>
           </button>
         </div>
+        <div id="authArea" class="flex items-center gap-2">
+          <span id="authUserBadge" class="hidden px-2.5 py-1 text-xs rounded-lg bg-neutral-800 border border-neutral-700 text-neutral-200 max-w-[180px] truncate" title="Signed in"></span>
+          <button id="btnSignIn" class="px-3 py-1.5 text-xs font-semibold rounded-lg bg-white text-black hover:bg-neutral-200 transition">Sign in</button>
+          <button id="btnSignOut" class="hidden px-3 py-1.5 text-xs font-semibold rounded-lg bg-neutral-900 text-neutral-200 hover:bg-neutral-800 border border-neutral-700 transition">Sign out</button>
+        </div>
       </div>
     </div>
   </header>
+
+  <!-- Auth Modal -->
+  <div id="authModal" class="hidden fixed inset-0 bg-black/80 backdrop-blur-sm z-[60] flex items-center justify-center p-4">
+    <div class="w-full max-w-sm bg-neutral-900 border border-neutral-700 rounded-2xl p-6 space-y-4">
+      <div class="flex items-center justify-between">
+        <h3 class="text-sm font-bold text-white">Recruiter sign in</h3>
+        <button id="authModalClose" class="w-8 h-8 rounded-lg bg-neutral-800 hover:bg-neutral-700 text-neutral-400 hover:text-white transition flex items-center justify-center"><i class="fa-solid fa-xmark text-sm"></i></button>
+      </div>
+      <p id="authHint" class="text-xs text-neutral-400">Sign in with your Supabase account to run screenings.</p>
+      <input id="authEmail" type="email" placeholder="you@company.com" class="w-full px-3 py-2 text-sm rounded-lg bg-black border border-neutral-700 text-white placeholder-neutral-500 outline-none focus:border-neutral-400">
+      <input id="authPassword" type="password" placeholder="Password" class="w-full px-3 py-2 text-sm rounded-lg bg-black border border-neutral-700 text-white placeholder-neutral-500 outline-none focus:border-neutral-400">
+      <p id="authError" class="hidden text-xs text-red-400"></p>
+      <button id="btnAuthLogin" class="w-full py-2 px-4 rounded-xl font-bold text-sm bg-white hover:bg-neutral-200 text-black transition">Sign in</button>
+      <button id="btnAuthSignup" class="w-full py-2 px-4 rounded-xl font-semibold text-sm bg-neutral-800 hover:bg-neutral-700 text-neutral-200 border border-neutral-700 transition">Create account</button>
+      <button id="btnAuthGoogle" class="w-full py-2 px-4 rounded-xl font-semibold text-sm bg-neutral-800 hover:bg-neutral-700 text-neutral-200 border border-neutral-700 transition flex items-center justify-center space-x-2"><i class="fa-brands fa-google"></i><span>Continue with Google</span></button>
+    </div>
+  </div>
 
   <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
 
@@ -257,6 +281,57 @@
   </main>
 
   <script>
+    // ---- Supabase Auth (optional until SUPABASE_URL is configured) ----
+    const KCFG = (window.KASPARRO_CONFIG || {});
+    let supabaseClient = null;
+    let supabaseSession = null;
+    try {
+      const pubKey = KCFG.SUPABASE_PUBLISHABLE_KEY || KCFG.SUPABASE_ANON_KEY;
+      if (KCFG.SUPABASE_URL && pubKey && window.supabase) {
+        supabaseClient = window.supabase.createClient(KCFG.SUPABASE_URL, pubKey);
+      }
+    } catch (e) { console.warn('Supabase init skipped:', e); }
+
+    function authHeaders(extra) {
+      const h = Object.assign({}, extra || {});
+      if (supabaseSession && supabaseSession.access_token) {
+        h['Authorization'] = 'Bearer ' + supabaseSession.access_token;
+      }
+      return h;
+    }
+
+    async function refreshAuthUI() {
+      const badge = document.getElementById('authUserBadge');
+      const btnIn = document.getElementById('btnSignIn');
+      const btnOut = document.getElementById('btnSignOut');
+      const hint = document.getElementById('authHint');
+      if (!supabaseClient) {
+        if (hint) hint.textContent = 'Auth not configured yet — local dev mode, no sign-in required. Set SUPABASE_URL in .env to enable.';
+        if (badge) badge.classList.add('hidden');
+        if (btnIn) btnIn.classList.add('hidden');
+        if (btnOut) btnOut.classList.add('hidden');
+        return;
+      }
+      const email = (supabaseSession && supabaseSession.user && supabaseSession.user.email) || '';
+      if (email) {
+        if (badge) { badge.textContent = email; badge.classList.remove('hidden'); }
+        if (btnIn) btnIn.classList.add('hidden');
+        if (btnOut) btnOut.classList.remove('hidden');
+      } else {
+        if (badge) badge.classList.add('hidden');
+        if (KCFG.AUTH_ENFORCED) { if (btnIn) btnIn.classList.remove('hidden'); }
+        else { if (btnIn) btnIn.classList.remove('hidden'); }
+        if (btnOut) btnOut.classList.add('hidden');
+      }
+    }
+
+    function showAuthError(msg) {
+      const el = document.getElementById('authError');
+      if (!el) return;
+      el.textContent = msg || '';
+      el.classList.toggle('hidden', !msg);
+    }
+
     let currentReport = null;
     let activeTab = 'eligible'; // 'eligible' or 'rejected'
     let selectedFiles = [];
@@ -320,7 +395,7 @@
       try {
         const resp = await fetch('/screen', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: authHeaders({ 'Content-Type': 'application/json' }),
           body: JSON.stringify({
             input_dir: './resumes',
             min_cgpa: null,
@@ -350,6 +425,7 @@
 
         const resp = await fetch('/upload_and_screen', {
           method: 'POST',
+          headers: authHeaders(),
           body: formData
         });
         if (!resp.ok) throw new Error(await resp.text());
@@ -731,7 +807,7 @@
       try {
         const resp = await fetch('/export_filtered_excel', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: authHeaders({ 'Content-Type': 'application/json' }),
           body: JSON.stringify({ candidates: cands, filter_label: getFilterScopeName() })
         });
         if (!resp.ok) throw new Error(await resp.text());
@@ -751,7 +827,7 @@
       try {
         const resp = await fetch('/export_filtered_docx', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: authHeaders({ 'Content-Type': 'application/json' }),
           body: JSON.stringify({ candidates: cands, filter_label: getFilterScopeName() })
         });
         if (!resp.ok) throw new Error(await resp.text());
@@ -828,7 +904,7 @@
 
     // Clear / reset to blank state (memory + uploads on server, UI locally)
     document.getElementById('btnClearResults').addEventListener('click', async () => {
-      try { await fetch('/clear', { method: 'POST' }); } catch (e) {}
+      try { await fetch('/clear', { method: 'POST', headers: authHeaders() }); } catch (e) {}
       currentReport = null;
       selectedFiles = [];
       fileInput.value = '';
@@ -897,6 +973,68 @@
       batchSummarySection.classList.add('hidden');
       resultsSection.classList.add('hidden');
       document.getElementById('emptyState').classList.remove('hidden');
+
+      // Auth wiring
+      const modal = document.getElementById('authModal');
+      const openModal = () => { showAuthError(''); if (modal) modal.classList.remove('hidden'); };
+      const closeModal = () => { if (modal) modal.classList.add('hidden'); };
+      document.getElementById('btnSignIn').addEventListener('click', openModal);
+      document.getElementById('authModalClose').addEventListener('click', closeModal);
+      if (modal) modal.addEventListener('click', (e) => { if (e.target === modal) closeModal(); });
+
+      async function afterAuth() {
+        try {
+          const { data } = await supabaseClient.auth.getSession();
+          supabaseSession = (data && data.session) || null;
+        } catch (e) { supabaseSession = null; }
+        await refreshAuthUI();
+        closeModal();
+      }
+
+      const loginBtn = document.getElementById('btnAuthLogin');
+      if (loginBtn) loginBtn.addEventListener('click', async () => {
+        if (!supabaseClient) return alert('Auth not configured. Set SUPABASE_URL + ANON_KEY in .env and restart.');
+        showAuthError('');
+        const email = document.getElementById('authEmail').value.trim();
+        const password = document.getElementById('authPassword').value;
+        const { error } = await supabaseClient.auth.signInWithPassword({ email, password });
+        if (error) return showAuthError(error.message);
+        await afterAuth();
+      });
+      const signupBtn = document.getElementById('btnAuthSignup');
+      if (signupBtn) signupBtn.addEventListener('click', async () => {
+        if (!supabaseClient) return alert('Auth not configured. Set SUPABASE_URL + ANON_KEY in .env and restart.');
+        showAuthError('');
+        const email = document.getElementById('authEmail').value.trim();
+        const password = document.getElementById('authPassword').value;
+        const { error } = await supabaseClient.auth.signUp({ email, password });
+        if (error) return showAuthError(error.message);
+        showAuthError('Account created — check your email to confirm, then Sign in.');
+      });
+      const googleBtn = document.getElementById('btnAuthGoogle');
+      if (googleBtn) googleBtn.addEventListener('click', async () => {
+        if (!supabaseClient) return alert('Auth not configured.');
+        await supabaseClient.auth.signInWithOAuth({ provider: 'google', options: { redirectTo: window.location.origin } });
+      });
+      document.getElementById('btnSignOut').addEventListener('click', async () => {
+        if (supabaseClient) await supabaseClient.auth.signOut();
+        supabaseSession = null;
+        await refreshAuthUI();
+      });
+
+      (async () => {
+        if (supabaseClient) {
+          try {
+            const { data } = await supabaseClient.auth.getSession();
+            supabaseSession = (data && data.session) || null;
+            supabaseClient.auth.onAuthStateChange((_ev, session) => {
+              supabaseSession = session;
+              refreshAuthUI();
+            });
+          } catch (e) { console.warn(e); }
+        }
+        await refreshAuthUI();
+      })();
     });
   </script>
 </body>

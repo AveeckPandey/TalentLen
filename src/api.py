@@ -4,11 +4,12 @@ import shutil
 import tempfile
 from pathlib import Path
 from typing import Optional, List
-from fastapi import FastAPI, UploadFile, File, Form, HTTPException
-from fastapi.responses import FileResponse, HTMLResponse
+from fastapi import Depends, FastAPI, UploadFile, File, Form, HTTPException
+from fastapi.responses import FileResponse, HTMLResponse, PlainTextResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
+from src.auth import AuthUser, get_current_user, is_auth_configured
 from src.config import settings
 from src.models import ScreeningReport, FilterPreferences, CandidateResult
 from src.pipeline import ScreeningPipeline
@@ -47,11 +48,36 @@ def get_dashboard() -> HTMLResponse:
 @app.get("/health")
 def health_check():
     """Health check endpoint."""
-    return {"status": "healthy", "service": "Kasparro Candidate Screening"}
+    return {
+        "status": "healthy",
+        "service": "Kasparro Candidate Screening",
+        "auth_configured": is_auth_configured(),
+        "auth_enforced": settings.REQUIRE_AUTH,
+    }
+
+
+@app.get("/config.js", response_class=PlainTextResponse)
+def frontend_config():
+    """Public runtime config for the dashboard (only publishable-safe keys)."""
+    url = (settings.SUPABASE_URL or "").replace('"', "")
+    pub = ((settings.frontend_key or "")).replace('"', "")
+    return (
+        "window.KASPARRO_CONFIG = {"
+        f'SUPABASE_URL: "{url}", SUPABASE_ANON_KEY: "{pub}", '
+        f'SUPABASE_PUBLISHABLE_KEY: "{pub}", '
+        f'AUTH_ENFORCED: {"true" if settings.REQUIRE_AUTH else "false"}'
+        "};"
+    )
+
+
+@app.get("/me")
+def get_me(user: AuthUser = Depends(get_current_user)):
+    """Return the current authenticated principal."""
+    return {"id": user.id, "email": user.email, "role": user.role, "is_dev": user.is_dev}
 
 
 @app.post("/screen", response_model=ScreenReport_out if "ScreenReport_out" in locals() else ScreeningReport)
-def screen_resumes(req: ScreenRequest):
+def screen_resumes(req: ScreenRequest, user: AuthUser = Depends(get_current_user)):
     """Run batch screening on specified resumes directory."""
     global latest_report
     preferences = FilterPreferences(
@@ -90,6 +116,7 @@ async def upload_and_screen(
     require_ai: bool = Form(True),
     require_experience: bool = Form(False),
     require_github_link: bool = Form(False),
+    user: AuthUser = Depends(get_current_user),
 ):
     """Upload up to 100 resume files and run screening immediately (fresh batch)."""
     global latest_report
@@ -147,7 +174,7 @@ uploads_dir.mkdir(parents=True, exist_ok=True)
 
 @app.get("/resumes/{file_name:path}")
 @app.get("/api/resume/{file_name:path}")
-def serve_resume(file_name: str):
+def serve_resume(file_name: str, user: AuthUser = Depends(get_current_user)):
     """Serve the exact original resume file (checking uploads first, then sample resumes directory)."""
     safe_name = Path(file_name).name
 
@@ -183,7 +210,7 @@ def serve_resume(file_name: str):
 
 
 @app.get("/results", response_model=ScreeningReport)
-def get_results():
+def get_results(user: AuthUser = Depends(get_current_user)):
     """Retrieve the latest screening results from current session only (blank on fresh load)."""
     global latest_report
     if latest_report:
@@ -193,7 +220,7 @@ def get_results():
 
 
 @app.post("/clear")
-def clear_session():
+def clear_session(user: AuthUser = Depends(get_current_user)):
     """Reset to blank state: clear in-memory report and uploaded files."""
     global latest_report
     latest_report = None
@@ -212,7 +239,7 @@ def clear_session():
 
 
 @app.get("/download_csv")
-def download_csv():
+def download_csv(user: AuthUser = Depends(get_current_user)):
     """Download the screening report as CSV file."""
     csv_file = settings.OUTPUT_FILE.with_suffix(".csv")
     if not csv_file.exists():
@@ -225,7 +252,7 @@ def download_csv():
 
 
 @app.get("/download_excel")
-def download_excel():
+def download_excel(user: AuthUser = Depends(get_current_user)):
     """Download the screening report as an Excel (.xlsx) spreadsheet with contact details."""
     xlsx_file = settings.OUTPUT_FILE.with_suffix(".xlsx")
     if not xlsx_file.exists():
@@ -247,7 +274,7 @@ def download_excel():
 
 
 @app.get("/download_docx")
-def download_docx():
+def download_docx(user: AuthUser = Depends(get_current_user)):
     """Download the screening report as a Word document (.docx) with contact details."""
     docx_file = settings.OUTPUT_FILE.with_suffix(".docx")
     if not docx_file.exists():
@@ -273,7 +300,7 @@ class FilterExportRequest(BaseModel):
 
 
 @app.post("/export_filtered_excel")
-def export_filtered_excel(req: FilterExportRequest):
+def export_filtered_excel(req: FilterExportRequest, user: AuthUser = Depends(get_current_user)):
     """Generate and download a tailored Excel file containing only the filtered candidates."""
     import re
     temp_file = Path(tempfile.mktemp(suffix=".xlsx"))
@@ -290,7 +317,7 @@ def export_filtered_excel(req: FilterExportRequest):
 
 
 @app.post("/export_filtered_docx")
-def export_filtered_docx(req: FilterExportRequest):
+def export_filtered_docx(req: FilterExportRequest, user: AuthUser = Depends(get_current_user)):
     """Generate and download a tailored Word document containing only the filtered candidates."""
     import re
     temp_file = Path(tempfile.mktemp(suffix=".docx"))

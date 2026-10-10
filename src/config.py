@@ -40,6 +40,32 @@ class Settings(BaseSettings):
     CONCURRENCY_LIMIT: int = Field(default=5, description="Max concurrent worker tasks")
     REQUEST_TIMEOUT: float = Field(default=15.0, description="Network timeout in seconds")
 
+    # Supabase Auth / DB / Storage (supports legacy + new publishable/secret keys)
+    SUPABASE_URL: Optional[str] = Field(default=None, description="Supabase project URL, e.g. https://xyz.supabase.co")
+    SUPABASE_ANON_KEY: Optional[str] = Field(default=None, description="Legacy anon public key (frontend, optional if publishable set)")
+    SUPABASE_PUBLISHABLE_KEY: Optional[str] = Field(default=None, description="New publishable key sb_publishable_... (frontend)")
+    SUPABASE_SERVICE_KEY: Optional[str] = Field(default=None, description="Legacy service_role key (backend only, never expose)")
+    SUPABASE_SECRET_KEY: Optional[str] = Field(default=None, description="New secret key sb_secret_... (backend only, never expose)")
+    SUPABASE_JWT_SECRET: Optional[str] = Field(default=None, description="Legacy JWT secret for HS256 local verification")
+    SUPABASE_JWKS_URL: Optional[str] = Field(default=None, description="JWKS URL for asymmetric JWT verification (new Supabase Auth)")
+    REQUIRE_AUTH: bool = Field(default=False, description="Enforce Supabase JWT on API routes. Set true on Render prod.")
+
+    @property
+    def frontend_key(self) -> Optional[str]:
+        return self.SUPABASE_PUBLISHABLE_KEY or self.SUPABASE_ANON_KEY
+
+    @property
+    def backend_key(self) -> Optional[str]:
+        return self.SUPABASE_SECRET_KEY or self.SUPABASE_SERVICE_KEY or self.SUPABASE_PUBLISHABLE_KEY or self.SUPABASE_ANON_KEY
+
+    @property
+    def effective_jwks_url(self) -> Optional[str]:
+        if self.SUPABASE_JWKS_URL:
+            return self.SUPABASE_JWKS_URL
+        if self.SUPABASE_URL:
+            return f"{self.SUPABASE_URL.rstrip('/')}/auth/v1/.well-known/jwks.json"
+        return None
+
     # Scoring Weights (Total: 100)
     WEIGHT_AI_PROJECT_DEPTH: int = 40
     WEIGHT_PYTHON_BACKEND: int = 30
