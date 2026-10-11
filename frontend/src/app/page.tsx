@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import Header from "@/components/Header";
 import HeroUpload from "@/components/HeroUpload";
 import QualityShowcase from "@/components/QualityShowcase";
+import AllInOneRecruiter from "@/components/AllInOneRecruiter";
 import BatchSummaryCards from "@/components/BatchSummary";
 import CandidateCard from "@/components/CandidateCard";
 import ResumeModal from "@/components/ResumeModal";
@@ -235,7 +236,10 @@ export default function DashboardPage() {
         )}
 
         {!report ? (
-          <QualityShowcase />
+          <>
+            <QualityShowcase />
+            <AllInOneRecruiter />
+          </>
         ) : (
           <>
             <BatchSummaryCards
