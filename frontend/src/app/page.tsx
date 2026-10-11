@@ -5,6 +5,7 @@ import Header from "@/components/Header";
 import HeroUpload from "@/components/HeroUpload";
 import QualityShowcase from "@/components/QualityShowcase";
 import AllInOneRecruiter from "@/components/AllInOneRecruiter";
+import ProblemStatementSection from "@/components/ProblemStatementSection";
 import BatchSummaryCards from "@/components/BatchSummary";
 import CandidateCard from "@/components/CandidateCard";
 import ResumeModal from "@/components/ResumeModal";
@@ -239,6 +240,7 @@ export default function DashboardPage() {
           <>
             <QualityShowcase />
             <AllInOneRecruiter />
+            <ProblemStatementSection />
           </>
         ) : (
           <>
