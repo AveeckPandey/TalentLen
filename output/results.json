@@ -73,7 +73,7 @@
       ],
       "concerns": [],
       "rejection_reasons": [],
-      "reason_50_to_100_words": "At 94.5/100, V Sree Raghu Vardhan stands out through cloud infrastructure (aws/azure), complemented by full stack capability (react/next.js/typescript). Plus strong public github footprint (veteran builder) rounds out the build. Core evidence in Python, FastAPI, Django, PostgreSQL, Redis maps to AI 37.0 and Python 30.0 bands. GitHub profile: Veteran Builder (4.2 yrs on GitHub, 35 repos [24 original], 45 contributions in past year [0 commits]). 3 relevant Python/AI repositories identified. Growth edge to probe in interview: polishing production hardening.",
+      "reason_50_to_100_words": "With a 94.5 score, this candidate’s mastery of Stateful multi-agent orchestration and Vector database retrieval stands out. Their architecture leverages Python, FastAPI, and PostgreSQL, scaled via Docker and AWS. GitHub history shows 35 repos over four years, including three relevant Python/AI projects. Though recent contribution volume is low, the depth of original work is significant. No major gaps exist, making them an immediate fit for our SDE AI internship.",
       "email": "vardhanvsr2004@gmail.com",
       "phone": "+91 9121763249",
       "resume_url": "/resumes/candidate_30.pdf",
@@ -1257,7 +1257,7 @@
         "No explicit testing (pytest/unit tests) mentioned"
       ],
       "rejection_reasons": [],
-      "reason_50_to_100_words": "Priyanshu’s profile hinges on stateful multi-agent orchestration using LangGraph and vector retrieval via Pinecone. His Python and FastAPI work shows promise in RAG pipelines, leveraging LangChain embeddings for robust data handling. However, the absence of explicit testing frameworks like pytest is a notable gap for production readiness. Given his 3.3-year GitHub history with nine original repositories, he demonstrates consistent initiative. This foundation makes him a viable fit for an internship focused on refining agentic backend systems, provided mentorship addresses rigorous software engineering practices and caching strategies.",
+      "reason_50_to_100_words": "Priyanshu Kumar (63.0/100) impressed with full stack capability (react/next.js/typescript) alongside strong public github footprint (veteran builder). Also notable: distributed task queues (celery/rabbitmq/kafka). Depth spans Python, FastAPI, PostgreSQL, LangChain, LangGraph, RAG (cloud 4.0/15, GitHub 7.5/10). Activity: Veteran Builder (3.3 yrs on GitHub, 13 repos [9 original], 5 contributions in past year [0 commits]). 7 relevant Python/AI repositories identified. Interview focus should be limited redis or backend caching evidence, but overall internship readiness is high.",
       "email": "krpriyanshu2805@gmail.com",
       "phone": "+91 8210008947",
       "resume_url": "/resumes/candidate_16.pdf",
@@ -2448,7 +2448,7 @@
       "rejection_reasons": [
         "No AI/agentic project evidence"
       ],
-      "reason_50_to_100_words": "Gayathri Palraj was marked ineligible at 0.0/100 due to no ai/agentic project evidence. Background shows Python, React, Typescript, Javascript, Node.Js, but the resume lacks concrete Python backend work and verifiable agentic, RAG, or LLM-tooling evidence. For this SDE AI internship the bar is shipped Python services plus agent orchestration, tool calling, or vector retrieval. This profile does not clear that baseline, though relevant Python building would change the outcome.",
+      "reason_50_to_100_words": "Gayathri, your proficiency in TypeScript and React is evident, yet your portfolio lacks the critical agentic or RAG implementation required for this role. While your Python and Node.js fundamentals are solid, we specifically need tangible evidence of AI backend development or multi-step reasoning systems. To clear this bar, please submit a project demonstrating a functional AI agent, such as a tool-using assistant or a retrieval-augmented generation pipeline, to prove your readiness for our advanced AI stack.",
       "email": "gayathri.2842004@gmail.com",
       "phone": "+91 9790220161",
       "resume_url": "/resumes/candidate_27.pdf",
@@ -2846,7 +2846,7 @@
       "rejection_reasons": [
         "No AI/agentic project evidence"
       ],
-      "reason_50_to_100_words": "Programming Language Python does not advance (ineligible, 0.0/100). Core gap: no ai/agentic project evidence. While Python, React, Javascript, GIT, SQL shows engineering interest, there is insufficient Python evidence and no production-grade agentic or retrieval pipeline. Successful candidates typically show async Python APIs wired to vector search, guardrailed agents, or evaluated RAG. Without that Python plus AI linkage, the profile falls below the hiring threshold.",
+      "reason_50_to_100_words": "Your portfolio highlights solid frontend work with React and Javascript, demonstrating clear technical proficiency. However, you lack the mandatory AI/agentic project evidence required for this role. Specifically, there is no proof of backend Python expertise or experience building RAG systems. To clear this bar, please showcase a project where you utilized Python to engineer an intelligent, autonomous agent or retrieval-augmented generation pipeline.",
       "email": "priyaraguraman29@gmail.com",
       "phone": null,
       "resume_url": "/resumes/candidate_20.pdf",
