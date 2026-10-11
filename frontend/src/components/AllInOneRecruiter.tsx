@@ -25,18 +25,7 @@ export default function AllInOneRecruiter() {
               streamline your hiring workflow end-to-end with verifiable scores and instant multi-format exports.
             </p>
 
-            {/* Feature Pills */}
-            <div className="pt-2 flex flex-wrap items-center gap-2 text-xs font-semibold">
-              <span className="px-3 py-1.5 rounded-full bg-blue-50 dark:bg-blue-950/40 text-[#0066FF] dark:text-blue-400 border border-blue-200 dark:border-blue-900">
-                ⚡ Instant Batch Screening
-              </span>
-              <span className="px-3 py-1.5 rounded-full bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800">
-                🛡️ Zero-Bias Safeguards
-              </span>
-              <span className="px-3 py-1.5 rounded-full bg-purple-50 dark:bg-purple-950/40 text-purple-600 dark:purple-400 border border-purple-200 dark:border-purple-800">
-                📊 One-Click Shortlist Export
-              </span>
-            </div>
+
           </div>
 
           {/* Right Column: Rounded Card with Cute 3D Robot Mascot (Image-1) */}
