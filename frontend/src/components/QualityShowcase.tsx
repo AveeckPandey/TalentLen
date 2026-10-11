@@ -231,265 +231,251 @@ export default function QualityShowcase() {
         })}
       </div>
 
-      {/* Interactive Comparison Card (remove.bg Before/After Slider) */}
-      <div className="mt-8 max-w-5xl mx-auto px-4">
-        <div
-          ref={containerRef}
-          onMouseDown={handleMouseDown}
-          onMouseMove={handleMouseMove}
-          onMouseUp={handleMouseUp}
-          onMouseLeave={handleMouseUp}
-          onTouchMove={handleTouchMove}
-          className="relative w-full h-[520px] sm:h-[480px] rounded-3xl overflow-hidden border border-neutral-200/90 dark:border-neutral-800 bg-white dark:bg-neutral-900 shadow-2xl select-none cursor-ew-resize"
-        >
-          {/* ================================================================ */}
-          {/* LAYER 1 (BOTTOM): TalentLens AI Merit Evaluation (Zero Bias)     */}
-          {/* ================================================================ */}
-          <div className="absolute inset-0 p-6 sm:p-8 bg-gradient-to-br from-white via-blue-50/20 to-white dark:from-neutral-900 dark:via-blue-950/10 dark:to-neutral-900 flex flex-col justify-between">
-            <div>
-              {/* Header Badge */}
-              <div className="flex items-center justify-between pb-4 border-b border-neutral-200/80 dark:border-neutral-800">
-                <div className="flex items-center gap-3">
-                  <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse" />
-                  <span className="text-xs font-bold uppercase tracking-wider text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/40 px-3 py-1 rounded-full border border-emerald-200 dark:border-emerald-800">
-                    AI Scan: Zero-Bias Scorecard
-                  </span>
-                </div>
-                <div className="text-right">
-                  <span className="text-2xl sm:text-3xl font-black text-neutral-900 dark:text-white">
-                    {candidate.score}
-                  </span>
-                  <span className="text-xs text-neutral-500 dark:text-neutral-400 font-semibold"> / 100</span>
-                </div>
+      {/* Main Showcase Card: Image on Left + Interactive Slider on Right */}
+      <div className="mt-8 max-w-6xl mx-auto px-4">
+        <div className="rounded-3xl border border-neutral-200/90 dark:border-neutral-800 bg-white dark:bg-neutral-900 shadow-2xl p-6 sm:p-8">
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-center">
+            
+            {/* Left: Happy Recruiter with Laptop Showing Selected Students */}
+            <div className="lg:col-span-5 flex flex-col items-center justify-center">
+              <div className="relative w-full max-w-sm">
+                <img
+                  src="/quality-recruiter.png"
+                  alt="Recruiter reviewing selected students"
+                  className="w-full h-auto object-contain drop-shadow-xl select-none"
+                />
               </div>
-
-              {/* Candidate Metadata & AI Recommendation */}
-              <div className="mt-4 flex flex-wrap items-baseline justify-between gap-2">
-                <div>
-                  <h3 className="text-lg sm:text-xl font-bold text-neutral-900 dark:text-white">
-                    {candidate.name}
-                  </h3>
-                  <p className="text-xs font-medium text-neutral-500 dark:text-neutral-400">
-                    {candidate.degree} • {candidate.role}
-                  </p>
-                </div>
-                <span className="text-xs font-bold text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-900 px-3 py-1 rounded-full">
-                  ★ {candidate.grade}
+              <div className="mt-3 text-center">
+                <span className="text-xs font-semibold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/40 px-3 py-1 rounded-full border border-emerald-200 dark:border-emerald-800">
+                  ✓ Selected Students • Pure Merit
                 </span>
               </div>
+            </div>
 
-              {/* Verified Skills Matrix */}
-              <div className="mt-4">
-                <div className="text-[11px] font-bold text-neutral-400 uppercase tracking-wider mb-1.5">
-                  Verified Skills Matrix
-                </div>
-                <div className="flex flex-wrap gap-1.5">
-                  {candidate.skills.map((s) => (
-                    <span
-                      key={s}
-                      className="px-2.5 py-0.5 rounded-md text-xs font-medium bg-neutral-100 dark:bg-neutral-800 text-neutral-800 dark:text-neutral-200 border border-neutral-200/80 dark:border-neutral-700/80"
-                    >
-                      ✓ {s}
+            {/* Right: Interactive Draggable Comparison Slider */}
+            <div className="lg:col-span-7">
+              <div
+                ref={containerRef}
+                onMouseDown={handleMouseDown}
+                onMouseMove={handleMouseMove}
+                onMouseUp={handleMouseUp}
+                onMouseLeave={handleMouseUp}
+                onTouchMove={handleTouchMove}
+                className="relative w-full h-[510px] sm:h-[480px] rounded-2xl overflow-hidden border border-neutral-200/90 dark:border-neutral-800 bg-white dark:bg-neutral-900 shadow-lg select-none cursor-ew-resize"
+              >
+                {/* ================================================================ */}
+                {/* LAYER 1 (BOTTOM): TalentLens AI Merit Evaluation (Zero Bias)     */}
+                {/* ================================================================ */}
+                <div className="absolute inset-0 p-5 sm:p-6 bg-gradient-to-br from-white via-blue-50/20 to-white dark:from-neutral-900 dark:via-blue-950/10 dark:to-neutral-900 flex flex-col justify-between">
+                  <div>
+                    {/* Header Badge */}
+                    <div className="flex items-center justify-between pb-3 border-b border-neutral-200/80 dark:border-neutral-800">
+                      <div className="flex items-center gap-2">
+                        <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse" />
+                        <span className="text-xs font-bold uppercase tracking-wider text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/40 px-3 py-1 rounded-full border border-emerald-200 dark:border-emerald-800">
+                          AI Scan: Zero-Bias Scorecard
+                        </span>
+                      </div>
+                      <div className="text-right">
+                        <span className="text-2xl sm:text-3xl font-black text-neutral-900 dark:text-white">
+                          {candidate.score}
+                        </span>
+                        <span className="text-xs text-neutral-500 dark:text-neutral-400 font-semibold"> / 100</span>
+                      </div>
+                    </div>
+
+                    {/* Candidate Metadata & AI Recommendation */}
+                    <div className="mt-3 flex flex-wrap items-baseline justify-between gap-2">
+                      <div>
+                        <h3 className="text-lg font-bold text-neutral-900 dark:text-white">
+                          {candidate.name}
+                        </h3>
+                        <p className="text-xs font-medium text-neutral-500 dark:text-neutral-400">
+                          {candidate.degree} • {candidate.role}
+                        </p>
+                      </div>
+                      <span className="text-xs font-bold text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-900 px-2.5 py-0.5 rounded-full">
+                        ★ {candidate.grade}
+                      </span>
+                    </div>
+
+                    {/* Verified Skills Matrix */}
+                    <div className="mt-3">
+                      <div className="text-[10px] font-bold text-neutral-400 uppercase tracking-wider mb-1">
+                        Verified Skills Matrix
+                      </div>
+                      <div className="flex flex-wrap gap-1">
+                        {candidate.skills.map((s) => (
+                          <span
+                            key={s}
+                            className="px-2 py-0.5 rounded text-[11px] font-medium bg-neutral-100 dark:bg-neutral-800 text-neutral-800 dark:text-neutral-200 border border-neutral-200/80 dark:border-neutral-700/80"
+                          >
+                            ✓ {s}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Rubric Breakdown Grid */}
+                    <div className="mt-3 grid grid-cols-2 sm:grid-cols-4 gap-1.5">
+                      {candidate.breakdown.map((b) => (
+                        <div
+                          key={b.label}
+                          className="p-2 rounded-xl bg-white dark:bg-black/40 border border-neutral-200 dark:border-neutral-800 text-center"
+                        >
+                          <div className="text-[10px] text-neutral-500 dark:text-neutral-400 font-medium truncate">
+                            {b.label}
+                          </div>
+                          <div className="text-xs font-bold text-neutral-900 dark:text-white mt-0.5">
+                            {b.score} <span className="text-[9px] font-normal text-neutral-400">/ {b.max}</span>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Zero-Bias Safeguard Notice */}
+                  <div className="pt-2.5 border-t border-neutral-200/80 dark:border-neutral-800 flex items-center justify-between text-xs text-neutral-500 dark:text-neutral-400">
+                    <span className="flex items-center gap-1.5 text-[11px]">
+                      <svg className="w-3.5 h-3.5 text-emerald-500 shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                        <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                      </svg>
+                      Blind screening: Demographic &amp; brand biases removed
                     </span>
-                  ))}
+                    <span className="font-mono text-[10px] text-emerald-600 dark:text-emerald-400 font-semibold">
+                      AUDITED COMPLIANT
+                    </span>
+                  </div>
+                </div>
+
+                {/* ================================================================ */}
+                {/* LAYER 2 (TOP): Raw Unstructured Resume (Clipped by sliderPos)    */}
+                {/* ================================================================ */}
+                <div
+                  className="absolute inset-y-0 left-0 overflow-hidden bg-neutral-100 dark:bg-neutral-950 border-r-2 border-[#0066FF] shadow-2xl"
+                  style={{ width: `${sliderPos}%` }}
+                >
+                  <div className="w-[560px] sm:w-[600px] p-5 sm:p-6 flex flex-col justify-between h-full">
+                    <div>
+                      {/* Header Badge */}
+                      <div className="flex items-center justify-between pb-3 border-b border-neutral-200 dark:border-neutral-800">
+                        <div className="flex items-center gap-2">
+                          <span className="w-2.5 h-2.5 rounded-full bg-amber-500" />
+                          <span className="text-xs font-bold uppercase tracking-wider text-amber-700 dark:text-amber-400 bg-amber-100 dark:bg-amber-950/50 px-3 py-1 rounded-full border border-amber-300 dark:border-amber-800">
+                            Raw Submission (Unscreened)
+                          </span>
+                        </div>
+                        <span className="text-xs font-bold text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/50 px-2.5 py-0.5 rounded border border-amber-200 dark:border-amber-800 font-mono text-[10px]">
+                          UNSTRUCTURED PDF
+                        </span>
+                      </div>
+
+                      {/* Simulated Raw Resume Content */}
+                      <div className="mt-3 font-mono text-xs text-neutral-700 dark:text-neutral-300 space-y-2 leading-relaxed">
+                        <div className="p-2.5 bg-white dark:bg-neutral-900 rounded-lg border border-neutral-200 dark:border-neutral-800">
+                          <div className="text-xs font-bold text-neutral-900 dark:text-white">
+                            [ANONYMIZED APPLICANT #{candidate.id.toUpperCase()}]
+                          </div>
+                          <div className="text-[10px] text-neutral-500 mt-0.5">
+                            applicant_resume.pdf • 142 KB • 2 pages
+                          </div>
+                        </div>
+
+                        <div className="space-y-0.5">
+                          <div className="font-bold text-neutral-900 dark:text-neutral-200 text-[10px] uppercase tracking-wide">
+                            Education:
+                          </div>
+                          <p className="text-[11px] text-neutral-600 dark:text-neutral-400 bg-white/60 dark:bg-neutral-900/40 p-1.5 rounded border border-neutral-200 dark:border-neutral-800">
+                            {candidate.rawText.education}
+                          </p>
+                        </div>
+
+                        <div className="space-y-0.5">
+                          <div className="font-bold text-neutral-900 dark:text-neutral-200 text-[10px] uppercase tracking-wide">
+                            Experience:
+                          </div>
+                          <p className="text-[11px] text-neutral-600 dark:text-neutral-400 bg-white/60 dark:bg-neutral-900/40 p-1.5 rounded border border-neutral-200 dark:border-neutral-800">
+                            {candidate.rawText.experience}
+                          </p>
+                        </div>
+
+                        <div className="space-y-0.5">
+                          <div className="font-bold text-neutral-900 dark:text-neutral-200 text-[10px] uppercase tracking-wide">
+                            Projects:
+                          </div>
+                          <p className="text-[11px] text-neutral-600 dark:text-neutral-400 bg-white/60 dark:bg-neutral-900/40 p-1.5 rounded border border-neutral-200 dark:border-neutral-800">
+                            {candidate.rawText.projects}
+                          </p>
+                        </div>
+
+                        <div className="text-[10px] text-amber-600 dark:text-amber-400 pt-0.5">
+                          ⚠️ Raw manual review takes ~8 min/resume and is prone to human fatigue &amp; bias.
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Raw State Footer Notice */}
+                    <div className="pt-2.5 border-t border-neutral-200 dark:border-neutral-800 flex items-center justify-between text-xs text-neutral-500 dark:text-neutral-400">
+                      <span className="flex items-center gap-1.5 text-emerald-600 dark:text-emerald-400 font-medium text-[11px]">
+                        <svg className="w-3.5 h-3.5 text-emerald-500 shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                          <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                        </svg>
+                        Demographic, gender, and school brand biases decoupled
+                      </span>
+                      <span className="font-mono text-[10px] text-emerald-600 dark:text-emerald-400 font-semibold">
+                        AUDITED COMPLIANT
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* ================================================================ */}
+                {/* SLIDER HANDLE (< | >) (remove.bg style)                           */}
+                {/* ================================================================ */}
+                <div
+                  className="absolute inset-y-0 flex items-center pointer-events-none -ml-5 z-20"
+                  style={{ left: `${sliderPos}%` }}
+                >
+                  <div className="w-10 h-10 rounded-full bg-white dark:bg-neutral-900 border-2 border-[#0066FF] shadow-xl flex items-center justify-center text-neutral-800 dark:text-white transition-transform hover:scale-110">
+                    <svg className="w-5 h-5 text-[#0066FF]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M8 9l-4 3 4 3m8-6l4 3-4 3" />
+                    </svg>
+                  </div>
                 </div>
               </div>
 
-              {/* Rubric Breakdown Grid */}
-              <div className="mt-4 grid grid-cols-2 sm:grid-cols-4 gap-2">
-                {candidate.breakdown.map((b) => (
-                  <div
-                    key={b.label}
-                    className="p-2.5 rounded-xl bg-white dark:bg-black/40 border border-neutral-200 dark:border-neutral-800"
+              {/* Drag Helper & Interactive Controls */}
+              <div className="mt-3 flex flex-wrap items-center justify-between text-xs text-neutral-500 dark:text-neutral-400 px-1 gap-2">
+                <span>⟵ Drag slider to compare Raw Resume vs. AI Scorecard ⟶</span>
+                <div className="flex items-center gap-2 sm:gap-3">
+                  <button
+                    type="button"
+                    onClick={() => setSliderPos(0)}
+                    className="hover:text-neutral-900 dark:hover:text-white font-medium"
                   >
-                    <div className="text-[10px] text-neutral-500 dark:text-neutral-400 font-medium truncate">
-                      {b.label}
-                    </div>
-                    <div className="text-sm font-bold text-neutral-900 dark:text-white mt-1">
-                      {b.score} <span className="text-[10px] font-normal text-neutral-400">/ {b.max}</span>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            {/* Zero-Bias Safeguard Notice */}
-            <div className="pt-3 border-t border-neutral-200/80 dark:border-neutral-800 flex items-center justify-between text-xs text-neutral-500 dark:text-neutral-400">
-              <span className="flex items-center gap-1.5">
-                <svg className="w-4 h-4 text-emerald-500" fill="currentColor" viewBox="0 0 20 20">
-                  <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-                </svg>
-                Blind screening: Demographic, gender, and school bias filtered out
-              </span>
-              <span className="hidden sm:inline font-mono text-[11px] text-emerald-600 dark:text-emerald-400 font-semibold">
-                AUDITED COMPLIANT
-              </span>
-            </div>
-          </div>
-
-          {/* ================================================================ */}
-          {/* LAYER 2 (TOP): Raw Unstructured Resume (Clipped by sliderPos)    */}
-          {/* ================================================================ */}
-          <div
-            className="absolute inset-y-0 left-0 overflow-hidden bg-neutral-100 dark:bg-neutral-950 border-r-2 border-[#0066FF] shadow-2xl"
-            style={{ width: `${sliderPos}%` }}
-          >
-            <div className="w-[992px] p-6 sm:p-8 flex flex-col justify-between h-full">
-              <div>
-                {/* Header Badge */}
-                <div className="flex items-center justify-between pb-4 border-b border-neutral-200 dark:border-neutral-800">
-                  <div className="flex items-center gap-2">
-                    <span className="w-2.5 h-2.5 rounded-full bg-amber-500" />
-                    <span className="text-xs font-bold uppercase tracking-wider text-amber-700 dark:text-amber-400 bg-amber-100 dark:bg-amber-950/50 px-3 py-1 rounded-full border border-amber-300 dark:border-amber-800">
-                      Raw Submission (Unscreened)
-                    </span>
-                  </div>
-                  <span className="text-xs font-bold text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/50 px-2.5 py-0.5 rounded border border-amber-200 dark:border-amber-800 font-mono text-[10px]">
-                    UNSTRUCTURED PDF
-                  </span>
-                </div>
-
-                {/* Simulated Raw Resume Content */}
-                <div className="mt-4 font-mono text-xs text-neutral-700 dark:text-neutral-300 space-y-3 leading-relaxed">
-                  <div className="p-3 bg-white dark:bg-neutral-900 rounded-lg border border-neutral-200 dark:border-neutral-800">
-                    <div className="text-sm font-bold text-neutral-900 dark:text-white">
-                      [ANONYMIZED APPLICANT #{candidate.id.toUpperCase()}]
-                    </div>
-                    <div className="text-[11px] text-neutral-500 mt-0.5">
-                      applicant_resume.pdf • 142 KB • 2 pages
-                    </div>
-                  </div>
-
-                  <div className="space-y-1">
-                    <div className="font-bold text-neutral-900 dark:text-neutral-200 text-[11px] uppercase tracking-wide">
-                      Education:
-                    </div>
-                    <p className="text-neutral-600 dark:text-neutral-400 bg-white/60 dark:bg-neutral-900/40 p-2 rounded border border-neutral-200 dark:border-neutral-800">
-                      {candidate.rawText.education}
-                    </p>
-                  </div>
-
-                  <div className="space-y-1">
-                    <div className="font-bold text-neutral-900 dark:text-neutral-200 text-[11px] uppercase tracking-wide">
-                      Experience:
-                    </div>
-                    <p className="text-neutral-600 dark:text-neutral-400 bg-white/60 dark:bg-neutral-900/40 p-2 rounded border border-neutral-200 dark:border-neutral-800">
-                      {candidate.rawText.experience}
-                    </p>
-                  </div>
-
-                  <div className="space-y-1">
-                    <div className="font-bold text-neutral-900 dark:text-neutral-200 text-[11px] uppercase tracking-wide">
-                      Projects:
-                    </div>
-                    <p className="text-neutral-600 dark:text-neutral-400 bg-white/60 dark:bg-neutral-900/40 p-2 rounded border border-neutral-200 dark:border-neutral-800">
-                      {candidate.rawText.projects}
-                    </p>
-                  </div>
-
-                  <div className="text-[11px] text-amber-600 dark:text-amber-400 pt-1">
-                    ⚠️ Raw manual review takes ~8 min/resume and is prone to human fatigue &amp; bias.
-                  </div>
+                    AI Scorecard
+                  </button>
+                  <span>•</span>
+                  <button
+                    type="button"
+                    onClick={() => setSliderPos(50)}
+                    className="hover:text-neutral-900 dark:hover:text-white font-medium"
+                  >
+                    Split (50%)
+                  </button>
+                  <span>•</span>
+                  <button
+                    type="button"
+                    onClick={() => setSliderPos(100)}
+                    className="hover:text-neutral-900 dark:hover:text-white font-medium"
+                  >
+                    Raw Resume
+                  </button>
                 </div>
               </div>
-
-              {/* Raw State Footer Notice */}
-              <div className="pt-3 border-t border-neutral-200 dark:border-neutral-800 flex items-center justify-between text-xs text-neutral-500 dark:text-neutral-400">
-                <span className="flex items-center gap-1.5 text-emerald-600 dark:text-emerald-400 font-medium">
-                  <svg className="w-4 h-4 text-emerald-500" fill="currentColor" viewBox="0 0 20 20">
-                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-                  </svg>
-                  Demographic, gender, and school brand biases decoupled
-                </span>
-                <span className="font-mono text-[11px] text-emerald-600 dark:text-emerald-400 font-semibold">
-                  AUDITED COMPLIANT
-                </span>
-              </div>
             </div>
-          </div>
 
-          {/* ================================================================ */}
-          {/* SLIDER HANDLE (< | >) (remove.bg style)                           */}
-          {/* ================================================================ */}
-          <div
-            className="absolute inset-y-0 flex items-center pointer-events-none -ml-5 z-20"
-            style={{ left: `${sliderPos}%` }}
-          >
-            <div className="w-10 h-10 rounded-full bg-white dark:bg-neutral-900 border-2 border-[#0066FF] shadow-xl flex items-center justify-center text-neutral-800 dark:text-white transition-transform hover:scale-110">
-              <svg className="w-5 h-5 text-[#0066FF]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M8 9l-4 3 4 3m8-6l4 3-4 3" />
-              </svg>
-            </div>
           </div>
-        </div>
-
-        {/* Drag Helper & Interactive Controls */}
-        <div className="mt-3 flex items-center justify-between text-xs text-neutral-500 dark:text-neutral-400 px-2">
-          <span>⟵ Drag slider to compare Raw Resume vs. AI Scorecard ⟶</span>
-          <div className="flex items-center gap-3">
-            <button
-              type="button"
-              onClick={() => setSliderPos(0)}
-              className="hover:text-neutral-900 dark:hover:text-white font-medium"
-            >
-              Show AI Result
-            </button>
-            <span>•</span>
-            <button
-              type="button"
-              onClick={() => setSliderPos(50)}
-              className="hover:text-neutral-900 dark:hover:text-white font-medium"
-            >
-              Split (50%)
-            </button>
-            <span>•</span>
-            <button
-              type="button"
-              onClick={() => setSliderPos(100)}
-              className="hover:text-neutral-900 dark:hover:text-white font-medium"
-            >
-              Show Raw Resume
-            </button>
-          </div>
-        </div>
-      </div>
-
-      {/* 3 Pillars of Zero-Bias AI Screening */}
-      <div className="mt-12 max-w-5xl mx-auto px-4 grid grid-cols-1 md:grid-cols-3 gap-6">
-        <div className="p-6 rounded-2xl bg-white dark:bg-neutral-900/60 border border-neutral-200/90 dark:border-neutral-800 shadow-sm">
-          <div className="w-10 h-10 rounded-xl bg-blue-50 dark:bg-blue-950/50 flex items-center justify-center text-[#0066FF] text-lg font-bold mb-4">
-            ⚖️
-          </div>
-          <h4 className="text-base font-bold text-neutral-900 dark:text-white">
-            100% Objective Scoring
-          </h4>
-          <p className="text-xs sm:text-sm text-neutral-600 dark:text-neutral-400 mt-2 leading-relaxed">
-            Every candidate is graded against the exact same rubric: Python fundamentals, project architecture, and problem solving.
-          </p>
-        </div>
-
-        <div className="p-6 rounded-2xl bg-white dark:bg-neutral-900/60 border border-neutral-200/90 dark:border-neutral-800 shadow-sm">
-          <div className="w-10 h-10 rounded-xl bg-emerald-50 dark:bg-emerald-950/50 flex items-center justify-center text-emerald-600 text-lg font-bold mb-4">
-            🛡️
-          </div>
-          <h4 className="text-base font-bold text-neutral-900 dark:text-white">
-            Blind Review Protocol
-          </h4>
-          <p className="text-xs sm:text-sm text-neutral-600 dark:text-neutral-400 mt-2 leading-relaxed">
-            Names, photos, gender, ethnicity, and college brand names are decoupled to eliminate unconscious human bias.
-          </p>
-        </div>
-
-        <div className="p-6 rounded-2xl bg-white dark:bg-neutral-900/60 border border-neutral-200/90 dark:border-neutral-800 shadow-sm">
-          <div className="w-10 h-10 rounded-xl bg-indigo-50 dark:bg-indigo-950/50 flex items-center justify-center text-indigo-600 text-lg font-bold mb-4">
-            ⚡
-          </div>
-          <h4 className="text-base font-bold text-neutral-900 dark:text-white">
-            Instant Batch Screening
-          </h4>
-          <p className="text-xs sm:text-sm text-neutral-600 dark:text-neutral-400 mt-2 leading-relaxed">
-            Evaluate hundreds of resumes in seconds with verifiable scores, ranked leaderboards, and instant Excel/Word exports.
-          </p>
         </div>
       </div>
     </section>
