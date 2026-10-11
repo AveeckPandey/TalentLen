@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import Header from "@/components/Header";
 import HeroUpload from "@/components/HeroUpload";
+import QualityShowcase from "@/components/QualityShowcase";
 import BatchSummaryCards from "@/components/BatchSummary";
 import CandidateCard from "@/components/CandidateCard";
 import ResumeModal from "@/components/ResumeModal";
@@ -234,10 +235,7 @@ export default function DashboardPage() {
         )}
 
         {!report ? (
-          <EmptyState
-            title="No candidates ranked yet"
-            hint={<>Click <span className="text-[#0066FF] font-semibold">Upload Resume</span> or <span className="text-neutral-900 dark:text-white font-semibold">⚡ Try 50 Samples</span> above to evaluate candidates.</>}
-          />
+          <QualityShowcase />
         ) : (
           <>
             <BatchSummaryCards
