@@ -10,3 +10,7 @@ build/
 .idea/
 kasparro.mp4
 uploads/
+frontend/node_modules/
+frontend/.next/
+frontend/out/
+frontend/.env.local

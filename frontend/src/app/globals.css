@@ -1,0 +1,27 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --bg-page: #f8fafc;
+  --text-page: #0f172a;
+}
+
+html.dark,
+:root.dark {
+  --bg-page: #000000;
+  --text-page: #f8fafc;
+}
+
+body {
+  font-family: 'Inter', ui-sans-serif, system-ui, sans-serif;
+  background-color: var(--bg-page);
+  color: var(--text-page);
+  transition: background-color 0.2s ease, color 0.2s ease;
+}
+
+input[type='range'] {
+  accent-color: currentColor;
+}

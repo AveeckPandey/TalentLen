@@ -6,6 +6,7 @@ from pathlib import Path
 from typing import Optional, List
 from fastapi import Depends, FastAPI, UploadFile, File, Form, HTTPException
 from fastapi.responses import FileResponse, HTMLResponse, PlainTextResponse
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
@@ -15,13 +16,35 @@ from src.models import ScreeningReport, FilterPreferences, CandidateResult
 from src.pipeline import ScreeningPipeline
 
 app = FastAPI(
-    title="Kasparro Resume Screening System",
+    title="TalentLens Resume Screening System",
     description="Automated candidate screening and ranking for SDE AI internship.",
     version="1.0.0",
 )
 
+# CORS for the Next.js frontend (dev :3000 + prod). Direct same-origin
+# rewrites are preferred (see frontend/next.config.mjs), this covers
+# NEXT_PUBLIC_API_URL cross-origin usage.
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[
+        "http://localhost:3000",
+        "http://127.0.0.1:3000",
+        "http://localhost:8000",
+        "http://127.0.0.1:8000",
+    ],
+    allow_origin_regex=r"https://.*\.vercel\.app",
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
 # Pipeline instance
 pipeline = ScreeningPipeline()
+
+# Serve public assets (logo, etc.) at /asset/*
+_asset_dir = settings.BASE_DIR / "public" / "asset"
+if _asset_dir.exists():
+    app.mount("/asset", StaticFiles(directory=str(_asset_dir)), name="asset")
 
 # Cache latest report in memory
 latest_report: Optional[ScreeningReport] = None
@@ -50,7 +73,7 @@ def health_check():
     """Health check endpoint."""
     return {
         "status": "healthy",
-        "service": "Kasparro Candidate Screening",
+        "service": "TalentLens Candidate Screening",
         "auth_configured": is_auth_configured(),
         "auth_enforced": settings.REQUIRE_AUTH,
     }
@@ -76,7 +99,7 @@ def get_me(user: AuthUser = Depends(get_current_user)):
     return {"id": user.id, "email": user.email, "role": user.role, "is_dev": user.is_dev}
 
 
-@app.post("/screen", response_model=ScreenReport_out if "ScreenReport_out" in locals() else ScreeningReport)
+@app.post("/screen", response_model=ScreeningReport)
 def screen_resumes(req: ScreenRequest, user: AuthUser = Depends(get_current_user)):
     """Run batch screening on specified resumes directory."""
     global latest_report
