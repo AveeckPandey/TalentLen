@@ -7,7 +7,6 @@ from typing import Optional, List
 from fastapi import Depends, FastAPI, UploadFile, File, Form, HTTPException
 from fastapi.responses import FileResponse, HTMLResponse, PlainTextResponse
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
 from src.auth import AuthUser, get_current_user, is_auth_configured
@@ -40,11 +39,6 @@ app.add_middleware(
 
 # Pipeline instance
 pipeline = ScreeningPipeline()
-
-# Serve public assets (logo, etc.) at /asset/*
-_asset_dir = settings.BASE_DIR / "public" / "asset"
-if _asset_dir.exists():
-    app.mount("/asset", StaticFiles(directory=str(_asset_dir)), name="asset")
 
 # Cache latest report in memory
 latest_report: Optional[ScreeningReport] = None

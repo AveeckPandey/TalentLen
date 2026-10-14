@@ -2,7 +2,8 @@ __pycache__/
 *.pyc
 .pytest_cache/
 .env
-output/.github_cache.json
+backend/output/
+backend/uploads/
 *.egg-info/
 dist/
 build/

@@ -36,6 +36,7 @@ REQUIRE_AUTH=false                   # keep false locally, true on Render
 
 ## 5. Run + test
 ```bash
+cd backend
 pip install -r requirements.txt
 python main.py --serve
 # open http://localhost:8000/config.js -> should show your URL
@@ -47,6 +48,6 @@ Set the same env vars on the Web Service, with `REQUIRE_AUTH=true`.
 
 ## Notes
 - Publishable key is public (frontend). Secret key stays server-side.
-- If you pasted keys in chat, rotate them after setup (API > Roll keys) and update `.env`/Render.
+- If you pasted keys in chat, rotate them after setup (API > Roll keys) and update `backend/.env`/Render.
 - All `/screen`, `/upload_and_screen`, `/results`, `/download_*`, `/export_*`, `/resumes/*` require `Authorization: Bearer <supabase access_token>` when `REQUIRE_AUTH=true`.
 - Tests run in open local-dev mode, no Supabase needed.
