@@ -26,7 +26,6 @@ const nextConfig = {
       })),
       { source: "/resumes/:path*", destination: `${API_URL}/resumes/:path*` },
       { source: "/api/resume/:path*", destination: `${API_URL}/api/resume/:path*` },
-      { source: "/asset/:path*", destination: `${API_URL}/asset/:path*` },
     ];
   },
 };

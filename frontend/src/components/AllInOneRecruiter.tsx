@@ -21,8 +21,11 @@ export default function AllInOneRecruiter() {
             </p>
 
             <p className="text-sm sm:text-base text-neutral-500 dark:text-neutral-400 leading-relaxed">
-              From automated Python &amp; agentic AI skill benchmarking to blind candidate evaluations,
-              streamline your hiring workflow end-to-end with verifiable scores and instant multi-format exports.
+              Whether you&apos;re hiring for{" "}
+              <strong className="text-neutral-900 dark:text-white font-semibold">
+                Full-Stack, AI &amp; Machine Learning, Data Analysis, Cloud &amp; DevOps
+              </strong>
+              , or Software Engineering—TalentLens evaluates authentic project complexity, problem solving, and technical depth with zero human bias.
             </p>
 
 

@@ -33,10 +33,10 @@ const CARDS: SolutionCard[] = [
     description: "Screen hundreds of student applicants simultaneously with consistent benchmark standards.",
   },
   {
-    id: "sde-ai",
-    icon: "🤖",
-    title: "for Modern SDE & Agentic AI",
-    description: "Evaluate authentic Python proficiency, asynchronous APIs, and real agent architectures.",
+    id: "any-role",
+    icon: "💻",
+    title: "for Full-Stack, AI & Data Roles",
+    description: "Tailor technical screening across Full-Stack, AI/ML, Data Analysis, Cloud, and Software Engineering.",
   },
   {
     id: "batch",
@@ -77,13 +77,7 @@ export default function ProblemStatementSection() {
   return (
     <section className="py-16 sm:py-24 border-t border-neutral-200/80 dark:border-neutral-800/80">
       <div className="max-w-6xl mx-auto px-4 text-center">
-        
-        {/* Section Pill */}
-        <div className="inline-flex items-center gap-2 px-3.5 py-1 rounded-full bg-blue-50 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-900 text-xs font-semibold text-[#0066FF] dark:text-blue-400 mb-4">
-          <span>Problem Solved</span>
-          <span>•</span>
-          <span>The 10–30 Second Resume Bottleneck</span>
-        </div>
+      
 
         {/* Headline (remove.bg style: "One tool, endless uses") */}
         <h2 className="text-3xl sm:text-4xl lg:text-5xl font-extrabold text-neutral-900 dark:text-white tracking-tight">

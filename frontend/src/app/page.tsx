@@ -12,6 +12,7 @@ import ResumeModal from "@/components/ResumeModal";
 import AuthModal, { type AuthMode } from "@/components/AuthModal";
 import PricingModal from "@/components/PricingModal";
 import LoadingOverlay from "@/components/LoadingOverlay";
+import Footer from "@/components/Footer";
 import {
   Button,
   Card,
@@ -309,6 +310,8 @@ export default function DashboardPage() {
           </>
         )}
       </main>
+
+      <Footer />
 
       <ResumeModal candidate={preview} onClose={() => setPreview(null)} />
       <PricingModal open={pricingOpen} onClose={() => setPricingOpen(false)} />

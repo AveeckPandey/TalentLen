@@ -1,6 +1,6 @@
 # TalentLens Frontend (Next.js)
 
-React/Next.js dashboard that replaces `static/index.html`. The Python FastAPI backend is kept as the API — resume parsing, scoring, GitHub enrichment, and exports all still run in Python.
+React/Next.js dashboard that replaces `backend/static/index.html`. The Python FastAPI backend is kept as the API — resume parsing, scoring, GitHub enrichment, and exports all still run in Python.
 
 ## Architecture
 
@@ -11,7 +11,7 @@ Browser (:3000) ──rewrites──▶ FastAPI (:8000)
 ```
 
 - App Router + TypeScript + Tailwind (`src/app`, `src/components`, `src/lib`).
-- `src/lib/types.ts` mirrors `src/models.py` — keep in sync.
+- `src/lib/types.ts` mirrors `backend/src/models.py` — keep in sync.
 - `src/lib/api.ts` is the typed client for every FastAPI endpoint.
 - Supabase Auth via `@supabase/supabase-js` (optional; blank keys = local-dev bypass, same as before).
 
@@ -36,11 +36,12 @@ Shared primitives reused across the dashboard — import from `@/components/ui`:
 ## Run
 
 ```bash
-# 1. Backend (terminal 1)
+# 1. Backend (terminal 1, from repo root)
+cd backend
 pip install -r requirements.txt
 python main.py --serve --port 8000
 
-# 2. Frontend (terminal 2)
+# 2. Frontend (terminal 2, from repo root)
 cd frontend
 cp .env.example .env.local   # optional; defaults point at 127.0.0.1:8000
 npm install

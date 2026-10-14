@@ -3,7 +3,7 @@ import "./globals.css";
 
 export const metadata: Metadata = {
   title: "TalentLens — AI Candidate Screening & Ranking",
-  description: "SDE Internship screening: Python fundamentals & agentic AI exposure.",
+  description: "AI Candidate Screening & Ranking across Full-Stack, AI/ML, Data Analysis, and Engineering roles.",
   icons: { icon: "/logo.png" },
 };
 
