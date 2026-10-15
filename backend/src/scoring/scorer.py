@@ -1,8 +1,8 @@
 """100-Point Candidate Scoring Engine with explainable evidence and quality penalties."""
 
 import re
-from typing import Tuple, List, Dict, Any
-from src.models import ParsedResume, ScoreBreakdown, GitHubMetrics
+from typing import Tuple, List, Dict, Any, Optional
+from src.models import ParsedResume, ScoreBreakdown, GitHubMetrics, ProjectEvaluationResult
 from src.config import settings
 
 
@@ -15,6 +15,7 @@ class CandidateScorer:
         resume: ParsedResume,
         github_metrics: GitHubMetrics,
         github_score: float,
+        project_eval: Optional[ProjectEvaluationResult] = None,
     ) -> Tuple[float, ScoreBreakdown, List[str], List[str], List[str], str]:
         """
         Compute total score and breakdown.
@@ -38,61 +39,74 @@ class CandidateScorer:
         # -------------------------------------------------------------
         ai_score = 0.0
 
-        # Multi-agent / State / Orchestration (up to 15 pts)
-        if any(k in project_context for k in ["langgraph", "multi-agent", "multi agent", "autogen", "crewai"]):
-            ai_score += 15.0
-            strengths.append("Stateful multi-agent orchestration (LangGraph/CrewAI/AutoGen)")
-        elif any(k in project_context for k in ["langchain", "tool-calling", "tool calling", "function calling", "adk"]):
-            ai_score += 11.0
-            strengths.append("Agentic workflow with tool/function calling")
-        elif any(k in project_context for k in ["agent", "agents"]):
-            ai_score += 7.0
-            strengths.append("Basic agent implementation")
+        if project_eval is not None:
+            # Score powered by Groq API project intelligence
+            ai_score = round(min(40.0, max(0.0, float(project_eval.ai_project_score))), 1)
+            for s in project_eval.strengths:
+                if s and s not in strengths:
+                    strengths.append(s)
+            for p in project_eval.penalties:
+                if p and p not in penalties_applied:
+                    penalties_applied.append(p)
+                concerns.append(f"Project quality flag: {p}")
+            if project_eval.is_tutorial_or_shallow and not any("tutorial" in c.lower() or "shallow" in c.lower() for c in concerns):
+                concerns.append("Projects appear shallow or tutorial-derived without sufficient production ownership")
+        else:
+            # Multi-agent / State / Orchestration (up to 15 pts)
+            if any(k in project_context for k in ["langgraph", "multi-agent", "multi agent", "autogen", "crewai"]):
+                ai_score += 15.0
+                strengths.append("Stateful multi-agent orchestration (LangGraph/CrewAI/AutoGen)")
+            elif any(k in project_context for k in ["langchain", "tool-calling", "tool calling", "function calling", "adk"]):
+                ai_score += 11.0
+                strengths.append("Agentic workflow with tool/function calling")
+            elif any(k in project_context for k in ["agent", "agents"]):
+                ai_score += 7.0
+                strengths.append("Basic agent implementation")
 
-        # RAG / Vector Retrieval / Embeddings (up to 12 pts)
-        if any(k in project_context for k in ["hybrid search", "rerank", "reranker", "advanced rag"]):
-            ai_score += 12.0
-            strengths.append("Advanced RAG with hybrid search and reranking")
-        elif any(k in project_context for k in ["chromadb", "faiss", "pinecone", "qdrant", "weaviate"]):
-            ai_score += 9.0
-            strengths.append("Vector database retrieval (ChromaDB/FAISS/Pinecone/Qdrant)")
-        elif any(k in project_context for k in ["rag", "embeddings", "vector search", "llamaindex"]):
-            ai_score += 7.0
-            strengths.append("Embeddings-based retrieval system")
+            # RAG / Vector Retrieval / Embeddings (up to 12 pts)
+            if any(k in project_context for k in ["hybrid search", "rerank", "reranker", "advanced rag"]):
+                ai_score += 12.0
+                strengths.append("Advanced RAG with hybrid search and reranking")
+            elif any(k in project_context for k in ["chromadb", "faiss", "pinecone", "qdrant", "weaviate"]):
+                ai_score += 9.0
+                strengths.append("Vector database retrieval (ChromaDB/FAISS/Pinecone/Qdrant)")
+            elif any(k in project_context for k in ["rag", "embeddings", "vector search", "llamaindex"]):
+                ai_score += 7.0
+                strengths.append("Embeddings-based retrieval system")
 
-        # Evaluation & Advanced Production Signals (up to 8 pts)
-        if any(k in project_context for k in ["ragas", "trulens", "langsmith", "llm-as-a-judge", "evaluation"]):
-            ai_score += 8.0
-            strengths.append("AI evaluation pipeline (Ragas/LangSmith/TruLens)")
-        elif any(k in project_context for k in ["fine-tuning", "lora", "transformers", "prompt engineering"]):
-            ai_score += 4.0
+            # Evaluation & Advanced Production Signals (up to 8 pts)
+            if any(k in project_context for k in ["ragas", "trulens", "langsmith", "llm-as-a-judge", "evaluation"]):
+                ai_score += 8.0
+                strengths.append("AI evaluation pipeline (Ragas/LangSmith/TruLens)")
+            elif any(k in project_context for k in ["fine-tuning", "lora", "transformers", "prompt engineering"]):
+                ai_score += 4.0
 
-        # Practical Integration / Business Logic (up to 5 pts)
-        if any(k in project_context for k in ["streaming", "sse", "memory", "state", "guardrails"]):
-            ai_score += 5.0
+            # Practical Integration / Business Logic (up to 5 pts)
+            if any(k in project_context for k in ["streaming", "sse", "memory", "state", "guardrails"]):
+                ai_score += 5.0
 
-        # Cap base AI score at 40
-        ai_score = min(40.0, ai_score)
+            # Cap base AI score at 40
+            ai_score = min(40.0, ai_score)
 
-        # PENALTIES FOR SHALLOW WRAPPERS & TUTORIALS
-        # Thin wrapper check: Mentioned OpenAI/Gemini/API call, but zero retrieval, zero state, zero tools
-        is_thin_wrapper = False
-        if any(k in project_context for k in ["openai", "gemini", "chatgpt"]) and not any(
-            k in project_context for k in ["rag", "vector", "langgraph", "tool", "agent", "chromadb", "faiss", "pinecone", "retrieval"]
-        ):
-            is_thin_wrapper = True
-            penalty = 12.0
-            ai_score = max(5.0, ai_score - penalty)
-            penalties_applied.append(f"Deducted {penalty:.0f} pts: Thin LLM wrapper without retrieval/state/agentic logic")
-            concerns.append("AI project appears to be a thin API wrapper without state or retrieval")
+            # PENALTIES FOR SHALLOW WRAPPERS & TUTORIALS
+            # Thin wrapper check: Mentioned OpenAI/Gemini/API call, but zero retrieval, zero state, zero tools
+            is_thin_wrapper = False
+            if any(k in project_context for k in ["openai", "gemini", "chatgpt"]) and not any(
+                k in project_context for k in ["rag", "vector", "langgraph", "tool", "agent", "chromadb", "faiss", "pinecone", "retrieval"]
+            ):
+                is_thin_wrapper = True
+                penalty = 12.0
+                ai_score = max(5.0, ai_score - penalty)
+                penalties_applied.append(f"Deducted {penalty:.0f} pts: Thin LLM wrapper without retrieval/state/agentic logic")
+                concerns.append("AI project appears to be a thin API wrapper without state or retrieval")
 
-        # Tutorial project penalty
-        if any(t in project_context for t in ["titanic", "chat with pdf", "todo app", "iris dataset"]):
-            if "evaluation" not in project_context and "production" not in project_context:
-                penalty = 8.0
-                ai_score = max(0.0, ai_score - penalty)
-                penalties_applied.append(f"Deducted {penalty:.0f} pts: Tutorial-style project without production ownership")
-                concerns.append("Contains tutorial-style projects without evidence of deeper ownership")
+            # Tutorial project penalty
+            if any(t in project_context for t in ["titanic", "chat with pdf", "todo app", "iris dataset"]):
+                if "evaluation" not in project_context and "production" not in project_context:
+                    penalty = 8.0
+                    ai_score = max(0.0, ai_score - penalty)
+                    penalties_applied.append(f"Deducted {penalty:.0f} pts: Tutorial-style project without production ownership")
+                    concerns.append("Contains tutorial-style projects without evidence of deeper ownership")
 
         # -------------------------------------------------------------
         # 2. Python & Backend Engineering (Max 30 points)
@@ -205,15 +219,26 @@ class CandidateScorer:
         )
 
         # Generate summary of candidate's technical profile
-        project_summary = cls._generate_project_summary(resume, strengths, penalties_applied)
+        project_summary = cls._generate_project_summary(resume, strengths, penalties_applied, project_eval=project_eval)
 
         return total, breakdown, strengths, concerns, penalties_applied, project_summary
 
     @staticmethod
     def _generate_project_summary(
-        resume: ParsedResume, strengths: List[str], penalties: List[str]
+        resume: ParsedResume,
+        strengths: List[str],
+        penalties: List[str],
+        project_eval: Optional[ProjectEvaluationResult] = None,
     ) -> str:
         """Create a compact project summary describing candidate's main technical accomplishments."""
+        if project_eval and project_eval.architectural_summary:
+            summary = project_eval.architectural_summary.strip()
+            if project_eval.project_count > 0:
+                summary = f"[{project_eval.project_count} Verified Projects] {summary}"
+            if penalties and not any(p.lower() in summary.lower() for p in penalties):
+                summary += f" Note: {penalties[0]}."
+            return summary
+
         if strengths:
             top_strengths = strengths[:3]
             summary = f"Built systems utilizing {', '.join(top_strengths)}."

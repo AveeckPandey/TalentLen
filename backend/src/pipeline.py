@@ -22,7 +22,7 @@ from src.parsers.resume_parser import ResumeParser
 from src.filters.eligibility import EligibilityFilter
 from src.enrichment.github_client import GitHubClient
 from src.scoring.scorer import CandidateScorer
-from src.llm.adapter import get_llm_adapter
+from src.llm.adapter import get_llm_adapter, HeuristicAdapter
 
 logger = logging.getLogger(__name__)
 
@@ -33,6 +33,7 @@ class ScreeningPipeline:
     def __init__(self, github_token: Optional[str] = None):
         self.github_client = GitHubClient(token=github_token)
         self.llm_adapter = get_llm_adapter()
+        self.heuristic_adapter = HeuristicAdapter()
 
     def process_directory(
         self,
@@ -118,8 +119,22 @@ class ScreeningPipeline:
                         )
                     )
 
-        # Sort eligible candidates by total_score descending
-        eligible_candidates.sort(key=lambda c: c.total_score, reverse=True)
+        # Deep Ranking Engine:
+        # 1. Total Score (0-100)
+        # 2. AI Project Depth (0-40) evaluated via Groq Project Intelligence
+        # 3. Verified Project Quantity (project_count)
+        # 4. Python Backend Engineering Score (0-30)
+        # 5. GitHub Public Footprint Score (0-10)
+        eligible_candidates.sort(
+            key=lambda c: (
+                round(c.total_score, 1),
+                round(c.score_breakdown.ai_project_depth, 1),
+                c.project_count,
+                round(c.score_breakdown.python_backend, 1),
+                round(c.score_breakdown.github, 1),
+            ),
+            reverse=True,
+        )
 
         # Assign ranks 1 to N
         for idx, candidate in enumerate(eligible_candidates, start=1):
@@ -172,13 +187,13 @@ class ScreeningPipeline:
             )
             return failed_result, True
 
-        # 2. Hard Eligibility Check
+        # Stage 2: HR Pre-Screen Gate (Filter on role requirements, e.g. Python Developer)
         eligibility = EligibilityFilter.evaluate(resume, preferences)
 
         if not eligibility.eligible:
-            # Candidate rejected by hard filter
-            # Generate narrative reason
-            narrative = self.llm_adapter.generate_narrative_reason(
+            # Short-Circuit Stream: Disqualified / Non-Matching candidates
+            # Instant deterministic narrative generation — 0 API calls, 0 Groq tokens, 0 latency
+            narrative = self.heuristic_adapter.generate_narrative_reason(
                 candidate_name=resume.candidate_name,
                 eligible=False,
                 total_score=0.0,
@@ -190,6 +205,7 @@ class ScreeningPipeline:
                 github_summary="Skipped for ineligible candidate",
             )
 
+            role_desc = preferences.target_role if (preferences and preferences.target_role) else "target position"
             rejected_result = CandidateResult(
                 rank=None,
                 candidate_name=resume.candidate_name,
@@ -201,7 +217,7 @@ class ScreeningPipeline:
                 total_score=0.0,
                 score_breakdown=ScoreBreakdown(),
                 matched_skills=eligibility.matched_skills,
-                project_summary="Profile did not meet minimum Python and AI/agentic requirements.",
+                project_summary=f"Profile did not clear HR pre-screening requirements for {role_desc}.",
                 github_summary="Not enriched (disqualified before scoring).",
                 strengths=[],
                 concerns=["Failed hard eligibility criteria"],
@@ -209,18 +225,29 @@ class ScreeningPipeline:
                 reason_50_to_100_words=narrative,
                 cgpa=resume.cgpa,
                 has_related_experience=resume.has_related_experience,
+                project_count=0,
+                project_evaluation=None,
             )
             return rejected_result, False
 
-        # 3. Eligible Candidate: Enrich with GitHub Activity
+        # Stage 3: Matched Resumes Stream ONLY -> Enrich GitHub Footprint
         gh_metrics, gh_score, gh_summary = self.github_client.enrich_profile(resume.github_username)
 
-        # 4. Score Candidate (100-pt rubric)
-        total_score, breakdown, strengths, concerns, penalties, project_summary = (
-            CandidateScorer.score_candidate(resume, gh_metrics, gh_score)
+        # Stage 4: Matched Resumes Stream ONLY -> Groq Project Intelligence Evaluation
+        project_eval = self.llm_adapter.evaluate_projects(
+            candidate_name=resume.candidate_name,
+            projects_text=resume.projects_text,
+            experience_text=resume.experience_text,
+            skills=resume.skills,
+            full_text=resume.full_text,
         )
 
-        # 5. Generate 50-100 Word Narrative Justification
+        # 5. Score Candidate (100-pt rubric using Groq Project Intelligence)
+        total_score, breakdown, strengths, concerns, penalties, project_summary = (
+            CandidateScorer.score_candidate(resume, gh_metrics, gh_score, project_eval=project_eval)
+        )
+
+        # 6. Generate 50-100 Word Narrative Justification
         narrative = self.llm_adapter.generate_narrative_reason(
             candidate_name=resume.candidate_name,
             eligible=True,
@@ -254,6 +281,8 @@ class ScreeningPipeline:
             cgpa=resume.cgpa,
             has_related_experience=resume.has_related_experience,
             penalties_applied=penalties,
+            project_count=project_eval.project_count if project_eval else 0,
+            project_evaluation=project_eval,
         )
 
         return result, False

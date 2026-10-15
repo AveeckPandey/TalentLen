@@ -24,6 +24,17 @@ export interface GitHubMetrics {
   status: string;
 }
 
+export interface ProjectEvaluationResult {
+  project_count: number;
+  ai_project_score: number;
+  project_titles: string[];
+  strengths: string[];
+  penalties: string[];
+  is_tutorial_or_shallow: boolean;
+  architectural_summary: string;
+  evaluation_source: string;
+}
+
 export interface CandidateResult {
   rank: number | null;
   candidate_name: string;
@@ -45,6 +56,8 @@ export interface CandidateResult {
   cgpa?: number | null;
   has_related_experience: boolean;
   penalties_applied: string[];
+  project_count?: number;
+  project_evaluation?: ProjectEvaluationResult | null;
 }
 
 export interface BatchSummary {
@@ -63,5 +76,77 @@ export interface ScreeningReport {
   rejected_candidates: CandidateResult[];
 }
 
+export interface FilterPreferences {
+  target_role?: string;
+  required_skills?: string[];
+  min_cgpa?: number | null;
+  require_ai_project?: boolean;
+  require_experience?: boolean;
+  require_github_link?: boolean;
+}
+
+export type PlanTier = "free" | "pro_29" | "enterprise";
+
+export interface UserQuota {
+  user_id: string;
+  tier: PlanTier;
+  tier_display_name: string;
+  price_usd: number;
+  screenings_limit: number;
+  screenings_used: number;
+  screenings_remaining: number;
+  max_resumes_per_batch: number;
+  can_screen: boolean;
+}
+
+
 export type ActiveTab = "eligible" | "rejected";
 export type TopNLimit = "all" | 5 | 10 | 20;
+
+export interface CreateOrderResponse {
+  order_id: string;
+  amount: number;
+  currency: string;
+  key_id: string;
+  tier: PlanTier;
+  tier_name: string;
+}
+
+export interface VerifyPaymentResponse {
+  status: string;
+  message: string;
+  tier: PlanTier;
+  quota: UserQuota;
+}
+
+export interface ApiKeyItem {
+  key_id: string;
+  key_prefix: string;
+  name: string;
+  user_id: string;
+  created_at: string;
+  last_used_at?: string | null;
+  is_active: boolean;
+}
+
+export interface CreateApiKeyResponse {
+  key_id: string;
+  key_prefix: string;
+  name: string;
+  api_key: string;
+  created_at: string;
+  message: string;
+}
+
+export interface ScreeningHistoryItem {
+  batch_id: string;
+  user_id: string;
+  target_role: string;
+  total_resumes: number;
+  eligible_count: number;
+  rejected_count: number;
+  avg_score: number;
+  top_score: number;
+  created_at: string;
+}
+

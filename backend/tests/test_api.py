@@ -3,8 +3,18 @@
 import pytest
 from fastapi.testclient import TestClient
 from src.api import app
+from src.quota import quota_manager
+from src.models import PlanTier
 
 client = TestClient(app)
+
+
+@pytest.fixture(autouse=True)
+def ensure_quota():
+    quota_manager.upgrade_user_tier("local-dev", PlanTier.PRO_29)
+    quota_manager.reset_user_quota("local-dev")
+    yield
+    quota_manager.reset_user_quota("local-dev")
 
 
 def test_api_health():

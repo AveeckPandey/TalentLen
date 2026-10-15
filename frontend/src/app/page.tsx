@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
 import Header from "@/components/Header";
 import HeroUpload from "@/components/HeroUpload";
 import QualityShowcase from "@/components/QualityShowcase";
@@ -9,10 +10,10 @@ import ProblemStatementSection from "@/components/ProblemStatementSection";
 import BatchSummaryCards from "@/components/BatchSummary";
 import CandidateCard from "@/components/CandidateCard";
 import ResumeModal from "@/components/ResumeModal";
-import AuthModal, { type AuthMode } from "@/components/AuthModal";
 import PricingModal from "@/components/PricingModal";
 import LoadingOverlay from "@/components/LoadingOverlay";
 import Footer from "@/components/Footer";
+import { openRazorpayCheckout } from "@/lib/razorpay";
 import {
   Button,
   Card,
@@ -29,9 +30,11 @@ import {
   exportFilteredJson,
   screenSampleResumes,
   uploadAndScreen,
+  getUserQuota,
+  upgradeUserTier,
 } from "@/lib/api";
 import { getSupabaseClient } from "@/lib/supabase";
-import type { ActiveTab, CandidateResult, ScreeningReport, TopNLimit } from "@/lib/types";
+import type { ActiveTab, CandidateResult, ScreeningReport, TopNLimit, UserQuota } from "@/lib/types";
 
 const TOPN_OPTIONS: { value: TopNLimit; label: string }[] = [
   { value: "all", label: "All" },
@@ -41,6 +44,7 @@ const TOPN_OPTIONS: { value: TopNLimit; label: string }[] = [
 ];
 
 export default function DashboardPage() {
+  const router = useRouter();
   const [report, setReport] = useState<ScreeningReport | null>(null);
   const [busy, setBusy] = useState(false);
   const [loadingMsg, setLoadingMsg] = useState("");
@@ -50,14 +54,24 @@ export default function DashboardPage() {
   const [query, setQuery] = useState("");
   const [preview, setPreview] = useState<CandidateResult | null>(null);
 
-  const [authOpen, setAuthOpen] = useState(false);
-  const [authMode, setAuthMode] = useState<AuthMode>("login");
   const [pricingOpen, setPricingOpen] = useState(false);
   const [isDark, setIsDark] = useState(false);
   const [userEmail, setUserEmail] = useState<string | null>(null);
+  const [quota, setQuota] = useState<UserQuota | null>(null);
   const authConfigured = Boolean(
-    process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+    process.env.NEXT_PUBLIC_SUPABASE_URL &&
+      (process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ||
+        process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY)
   );
+
+  async function refreshQuota() {
+    try {
+      const q = await getUserQuota();
+      setQuota(q);
+    } catch {
+      // Local dev offline fallback
+    }
+  }
 
   useEffect(() => {
     // Theme initialization (defaults to dark mode)
@@ -72,13 +86,33 @@ export default function DashboardPage() {
       document.body.classList.remove("dark");
     }
 
+    refreshQuota();
+
     const sb = getSupabaseClient();
-    if (!sb) return;
-    sb.auth.getSession().then(({ data }) => setUserEmail(data.session?.user?.email ?? null));
-    const { data: sub } = sb.auth.onAuthStateChange((_ev, session) =>
-      setUserEmail(session?.user?.email ?? null)
-    );
-    return () => sub.subscription.unsubscribe();
+    if (sb) {
+      sb.auth.getSession().then(({ data }) => {
+        if (data.session?.user?.email) {
+          setUserEmail(data.session.user.email);
+        } else if (typeof window !== "undefined") {
+          const demo = localStorage.getItem("talentlens-demo-user");
+          if (demo) setUserEmail(demo);
+        }
+        refreshQuota();
+      });
+      const { data: sub } = sb.auth.onAuthStateChange((_ev, session) => {
+        if (session?.user?.email) {
+          setUserEmail(session.user.email);
+        } else if (typeof window !== "undefined") {
+          const demo = localStorage.getItem("talentlens-demo-user");
+          setUserEmail(demo || null);
+        }
+        refreshQuota();
+      });
+      return () => sub.subscription.unsubscribe();
+    } else if (typeof window !== "undefined") {
+      const demo = localStorage.getItem("talentlens-demo-user");
+      if (demo) setUserEmail(demo);
+    }
   }, []);
 
   function toggleTheme() {
@@ -107,11 +141,6 @@ export default function DashboardPage() {
     }
   }
 
-  function openAuth(mode: AuthMode) {
-    setAuthMode(mode);
-    setAuthOpen(true);
-  }
-
   async function runSample() {
     setBusy(true);
     setLoadingMsg("Screening 50 sample resumes from resumes/ directory…");
@@ -119,8 +148,14 @@ export default function DashboardPage() {
       const r = await screenSampleResumes();
       setReport(r);
       setActiveTab("eligible");
+      refreshQuota();
     } catch (e: unknown) {
-      alert("Error screening resumes: " + (e instanceof Error ? e.message : String(e)));
+      const msg = e instanceof Error ? e.message : String(e);
+      refreshQuota();
+      if (msg.includes("limit reached") || msg.includes("Upgrade to Recruiter Pro") || msg.includes("403")) {
+        setPricingOpen(true);
+      }
+      alert("Error screening resumes: " + msg);
     } finally {
       setBusy(false);
     }
@@ -134,8 +169,14 @@ export default function DashboardPage() {
       const r = await uploadAndScreen(files);
       setReport(r);
       setActiveTab("eligible");
+      refreshQuota();
     } catch (e: unknown) {
-      alert("Upload failed: " + (e instanceof Error ? e.message : String(e)));
+      const msg = e instanceof Error ? e.message : String(e);
+      refreshQuota();
+      if (msg.includes("limit reached") || msg.includes("Upgrade to Recruiter Pro") || msg.includes("403")) {
+        setPricingOpen(true);
+      }
+      alert("Upload failed: " + msg);
     } finally {
       setBusy(false);
     }
@@ -205,14 +246,18 @@ export default function DashboardPage() {
       <Header
         userEmail={userEmail}
         authConfigured={authConfigured}
-        onLogin={() => openAuth("login")}
-        onSignup={() => openAuth("signup")}
+        onLogin={() => router.push("/login?mode=login")}
+        onSignup={() => router.push("/login?mode=signup")}
         onSignOut={async () => {
+          if (typeof window !== "undefined") {
+            localStorage.removeItem("talentlens-demo-user");
+          }
           await getSupabaseClient()?.auth.signOut();
           setUserEmail(null);
         }}
         onBulkUpload={handleBulkUpload}
         onPricing={() => setPricingOpen(true)}
+        quota={quota}
         isDark={isDark}
         onToggleTheme={toggleTheme}
       />
@@ -314,8 +359,25 @@ export default function DashboardPage() {
       <Footer />
 
       <ResumeModal candidate={preview} onClose={() => setPreview(null)} />
-      <PricingModal open={pricingOpen} onClose={() => setPricingOpen(false)} />
-      <AuthModal open={authOpen} initialMode={authMode} onClose={() => setAuthOpen(false)} onAuthed={() => getSupabaseClient()?.auth.getSession().then(({ data }) => setUserEmail(data.session?.user?.email ?? null))} />
+      <PricingModal
+        open={pricingOpen}
+        onClose={() => setPricingOpen(false)}
+        onSelectPlan={async (plan) => {
+          if (plan === "pro_29") {
+            await openRazorpayCheckout({
+              tier: "pro_29",
+              userEmail: userEmail,
+              onSuccess: (updated) => {
+                setQuota(updated);
+                alert("Payment verified successfully! Your account is upgraded to Recruiter Pro (₹2,499 / $29). 30 screening runs & up to 100 resumes per batch unlocked.");
+              },
+              onError: (e) => {
+                alert("Payment failed or cancelled: " + e.message);
+              },
+            });
+          }
+        }}
+      />
       {busy && <LoadingOverlay message={loadingMsg || "Processing candidate resumes…"} />}
     </>
   );

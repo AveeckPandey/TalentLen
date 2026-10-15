@@ -74,10 +74,12 @@ def run_cli() -> None:
         action="store_true",
         help="Launch the interactive Web Dashboard & FastAPI server",
     )
+    import os
+
     parser.add_argument(
         "--port",
         type=int,
-        default=8000,
+        default=int(os.environ.get("PORT", 8000)),
         help="Port for the FastAPI web server",
     )
 

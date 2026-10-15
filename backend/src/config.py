@@ -50,6 +50,10 @@ class Settings(BaseSettings):
     SUPABASE_JWKS_URL: Optional[str] = Field(default=None, description="JWKS URL for asymmetric JWT verification (new Supabase Auth)")
     REQUIRE_AUTH: bool = Field(default=False, description="Enforce Supabase JWT on API routes. Set true on Render prod.")
 
+    # Razorpay Payment Gateway (Test Mode / Live)
+    RAZORPAY_KEY_ID: Optional[str] = Field(default=None, description="Razorpay Key ID (public/test)")
+    RAZORPAY_KEY_SECRET: Optional[str] = Field(default=None, description="Razorpay Secret Key (backend only)")
+
     @property
     def frontend_key(self) -> Optional[str]:
         return self.SUPABASE_PUBLISHABLE_KEY or self.SUPABASE_ANON_KEY

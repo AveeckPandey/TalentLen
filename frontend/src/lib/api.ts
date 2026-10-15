@@ -1,4 +1,14 @@
-import type { CandidateResult, ScreeningReport } from "./types";
+import type {
+  CandidateResult,
+  ScreeningReport,
+  UserQuota,
+  PlanTier,
+  CreateOrderResponse,
+  VerifyPaymentResponse,
+  ApiKeyItem,
+  CreateApiKeyResponse,
+  ScreeningHistoryItem,
+} from "./types";
 
 async function authHeader(): Promise<Record<string, string>> {
   // Supabase session is read client-side and attached as Bearer token,
@@ -49,6 +59,19 @@ export async function uploadAndScreen(files: File[]): Promise<ScreeningReport> {
   });
   if (!resp.ok) throw new Error(await resp.text());
   return (await resp.json()) as ScreeningReport;
+}
+
+export async function getResults(): Promise<ScreeningReport | null> {
+  try {
+    const resp = await fetch("/results", {
+      method: "GET",
+      headers: await authHeader(),
+    });
+    if (!resp.ok) return null;
+    return (await resp.json()) as ScreeningReport;
+  } catch {
+    return null;
+  }
 }
 
 export async function clearSession(): Promise<void> {
@@ -141,3 +164,146 @@ export function exportFilteredJson(candidates: CandidateResult[], filterLabel: s
   );
   downloadBlob(blob, `shortlist_${filterLabel.toLowerCase()}.json`);
 }
+
+export async function getUserQuota(): Promise<UserQuota> {
+  const resp = await fetch("/api/user/quota", {
+    method: "GET",
+    headers: await authHeader(),
+  });
+  if (!resp.ok) throw new Error(await resp.text());
+  return (await resp.json()) as UserQuota;
+}
+
+export async function upgradeUserTier(tier: PlanTier): Promise<UserQuota> {
+  const headers = {
+    "Content-Type": "application/json",
+    ...(await authHeader()),
+  };
+  const resp = await fetch("/api/user/upgrade", {
+    method: "POST",
+    headers,
+    body: JSON.stringify({ tier }),
+  });
+  if (!resp.ok) throw new Error(await resp.text());
+  return (await resp.json()) as UserQuota;
+}
+
+// -----------------------------------------------------------------
+// Razorpay Payments
+// -----------------------------------------------------------------
+
+export async function createRazorpayOrder(
+  tier: PlanTier = "pro_29",
+  currency: string = "INR"
+): Promise<CreateOrderResponse> {
+  const headers = {
+    "Content-Type": "application/json",
+    ...(await authHeader()),
+  };
+  const resp = await fetch("/api/payments/create-order", {
+    method: "POST",
+    headers,
+    body: JSON.stringify({ tier, currency }),
+  });
+  if (!resp.ok) {
+    const errText = await resp.text();
+    throw new Error(errText || "Failed to create Razorpay payment order");
+  }
+  return (await resp.json()) as CreateOrderResponse;
+}
+
+export async function verifyRazorpayPayment(
+  razorpay_order_id: string,
+  razorpay_payment_id: string,
+  razorpay_signature: string,
+  tier: PlanTier = "pro_29"
+): Promise<VerifyPaymentResponse> {
+  const headers = {
+    "Content-Type": "application/json",
+    ...(await authHeader()),
+  };
+  const resp = await fetch("/api/payments/verify", {
+    method: "POST",
+    headers,
+    body: JSON.stringify({
+      razorpay_order_id,
+      razorpay_payment_id,
+      razorpay_signature,
+      tier,
+    }),
+  });
+  if (!resp.ok) {
+    const errText = await resp.text();
+    throw new Error(errText || "Payment verification failed");
+  }
+  return (await resp.json()) as VerifyPaymentResponse;
+}
+
+// -----------------------------------------------------------------
+// Developer API Key Management
+// -----------------------------------------------------------------
+
+export async function listUserApiKeys(): Promise<ApiKeyItem[]> {
+  const resp = await fetch("/api/user/keys", {
+    method: "GET",
+    headers: await authHeader(),
+  });
+  if (!resp.ok) throw new Error(await resp.text());
+  return (await resp.json()) as ApiKeyItem[];
+}
+
+export async function createUserApiKey(name: string): Promise<CreateApiKeyResponse> {
+  const headers = {
+    "Content-Type": "application/json",
+    ...(await authHeader()),
+  };
+  const resp = await fetch("/api/user/keys", {
+    method: "POST",
+    headers,
+    body: JSON.stringify({ name }),
+  });
+  if (!resp.ok) throw new Error(await resp.text());
+  return (await resp.json()) as CreateApiKeyResponse;
+}
+
+export async function deleteUserApiKey(keyId: string): Promise<void> {
+  const resp = await fetch(`/api/user/keys/${encodeURIComponent(keyId)}`, {
+    method: "DELETE",
+    headers: await authHeader(),
+  });
+  if (!resp.ok) throw new Error(await resp.text());
+}
+
+export const revokeUserApiKey = deleteUserApiKey;
+
+// -----------------------------------------------------------------
+// Previous Shortlistings / Screening History
+// -----------------------------------------------------------------
+
+export async function listScreeningHistory(): Promise<ScreeningHistoryItem[]> {
+  const resp = await fetch("/api/history", {
+    method: "GET",
+    headers: await authHeader(),
+  });
+  if (!resp.ok) return [];
+  return (await resp.json()) as ScreeningHistoryItem[];
+}
+
+export async function loadScreeningHistory(batchId: string): Promise<ScreeningReport> {
+  const resp = await fetch(`/api/history/${encodeURIComponent(batchId)}`, {
+    method: "GET",
+    headers: await authHeader(),
+  });
+  if (!resp.ok) throw new Error(await resp.text());
+  return (await resp.json()) as ScreeningReport;
+}
+
+export async function deleteScreeningHistory(batchId: string): Promise<void> {
+  const resp = await fetch(`/api/history/${encodeURIComponent(batchId)}`, {
+    method: "DELETE",
+    headers: await authHeader(),
+  });
+  if (!resp.ok) throw new Error(await resp.text());
+}
+
+

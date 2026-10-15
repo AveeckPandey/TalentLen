@@ -93,6 +93,40 @@ export default function CandidateCard({
           <ScoreCell label="Engineering Depth (5)" value={c.score_breakdown.engineering_depth} />
         </div>
 
+        {c.project_evaluation && (
+          <div className="flex flex-wrap items-center gap-2 text-xs text-neutral-700 dark:text-neutral-300 bg-blue-50/70 dark:bg-blue-950/30 p-2.5 rounded-lg border border-blue-200 dark:border-blue-900/50">
+            <span className="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-bold bg-[#0066FF] text-white">
+              {c.project_evaluation.evaluation_source === "groq"
+                ? "⚡ Groq Project Intelligence"
+                : "⚡ Project Intelligence"}
+            </span>
+            <span>•</span>
+            <span>
+              <strong className="text-neutral-900 dark:text-white">
+                {c.project_count || c.project_evaluation.project_count}
+              </strong>{" "}
+              Projects Scanned
+            </span>
+            <span>•</span>
+            <span>
+              AI Depth:{" "}
+              <strong className="text-neutral-900 dark:text-white">
+                {c.score_breakdown.ai_project_depth.toFixed(1)} / 40
+              </strong>
+            </span>
+            {c.project_evaluation.is_tutorial_or_shallow && (
+              <span className="text-amber-600 dark:text-amber-400 font-semibold text-[11px]">
+                (⚠️ Shallow / Tutorial Signals Detected)
+              </span>
+            )}
+            {c.project_evaluation.architectural_summary && (
+              <p className="w-full text-[11px] text-neutral-600 dark:text-neutral-400 mt-1 italic">
+                "{c.project_evaluation.architectural_summary}"
+              </p>
+            )}
+          </div>
+        )}
+
         {c.github_metrics && c.github_metrics.status === "enriched" && (
           <div className="flex flex-wrap items-center gap-2 text-xs text-neutral-700 dark:text-neutral-300 bg-neutral-50 dark:bg-black/40 p-2.5 rounded-lg border border-neutral-200 dark:border-neutral-800">
             <Badge variant="bright" className="font-semibold">

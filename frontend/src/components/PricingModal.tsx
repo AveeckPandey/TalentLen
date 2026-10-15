@@ -33,12 +33,13 @@ export default function PricingModal({ open, onClose, onSelectPlan }: PricingMod
           <div className="bg-neutral-950/60 border border-neutral-800 rounded-xl p-5 flex flex-col justify-between space-y-4">
             <div>
               <div className="inline-block px-2.5 py-0.5 text-[11px] font-semibold rounded-full bg-neutral-800 text-neutral-300 mb-2">
-                Starter
+                Starter (Free)
               </div>
               <div className="text-2xl font-bold text-white">$0 <span className="text-xs font-normal text-neutral-400">/mo</span></div>
               <p className="text-xs text-neutral-400 mt-1">For recruiters testing small resume batches.</p>
               <ul className="text-xs text-neutral-300 mt-4 space-y-2">
-                <li className="flex items-center gap-2">✓ Up to 50 resumes/batch</li>
+                <li className="flex items-center gap-2 font-medium text-white">✓ 3 screening runs limit</li>
+                <li className="flex items-center gap-2 font-medium text-white">✓ Up to 50 resumes per batch</li>
                 <li className="flex items-center gap-2">✓ Heuristic scoring engine</li>
                 <li className="flex items-center gap-2">✓ CSV &amp; JSON exports</li>
                 <li className="flex items-center gap-2">✓ Interactive CGPA dialer</li>
@@ -55,36 +56,38 @@ export default function PricingModal({ open, onClose, onSelectPlan }: PricingMod
           </div>
 
           {/* Pro Tier (Popular) */}
-          <div className="bg-neutral-900 border-2 border-white rounded-xl p-5 flex flex-col justify-between space-y-4 relative shadow-lg">
-            <span className="absolute -top-3 left-1/2 -translate-x-1/2 px-3 py-0.5 text-[10px] font-bold rounded-full bg-white text-black tracking-wide uppercase">
+          <div className="bg-neutral-900 border-2 border-[#0066FF] rounded-xl p-5 flex flex-col justify-between space-y-4 relative shadow-lg">
+            <span className="absolute -top-3 left-1/2 -translate-x-1/2 px-3 py-0.5 text-[10px] font-bold rounded-full bg-[#0066FF] text-white tracking-wide uppercase">
               Most Popular
             </span>
             <div>
-              <div className="inline-block px-2.5 py-0.5 text-[11px] font-semibold rounded-full bg-neutral-800 text-white mb-2">
+              <div className="inline-block px-2.5 py-0.5 text-[11px] font-semibold rounded-full bg-blue-950 text-blue-300 border border-blue-800 mb-2">
                 Recruiter Pro
               </div>
-              <div className="text-2xl font-bold text-white">$29 <span className="text-xs font-normal text-neutral-400">/mo</span></div>
-              <p className="text-xs text-neutral-300 mt-1">Complete AI multi-agent evaluations.</p>
+              <div className="text-2xl font-bold text-white">
+                ₹2,499 <span className="text-xs font-normal text-neutral-400">($29/mo)</span>
+              </div>
+              <p className="text-xs text-neutral-300 mt-1">High-volume screening with Groq project intelligence.</p>
               <ul className="text-xs text-neutral-200 mt-4 space-y-2">
-                <li className="flex items-center gap-2 font-medium">✓ Unlimited resume batches</li>
-                <li className="flex items-center gap-2 font-medium">✓ Multi-Agent LLM (Groq / Qwen / Claude)</li>
+                <li className="flex items-center gap-2 font-bold text-[#0066FF] dark:text-blue-400">✓ 30 screening runs limit</li>
+                <li className="flex items-center gap-2 font-bold text-[#0066FF] dark:text-blue-400">✓ Up to 100 resumes per batch</li>
+                <li className="flex items-center gap-2 font-medium">✓ Groq AI project quantity &amp; quality ranking</li>
+                <li className="flex items-center gap-2">✓ Developer API Key access (5 req/min)</li>
                 <li className="flex items-center gap-2">✓ 50–100 word narrative evaluations</li>
                 <li className="flex items-center gap-2">✓ GitHub cohort verification</li>
                 <li className="flex items-center gap-2">✓ Excel (.xlsx) &amp; Word (.docx) exports</li>
-                <li className="flex items-center gap-2">✓ Supabase cloud team sync</li>
               </ul>
             </div>
             <Button
               variant="primary"
               size="sm"
               onClick={() => {
-                if (onSelectPlan) onSelectPlan("pro");
-                alert("Redirecting to Pro activation checkout...");
+                if (onSelectPlan) onSelectPlan("pro_29");
                 onClose();
               }}
-              className="w-full font-bold rounded-lg text-xs"
+              className="w-full font-bold rounded-lg text-xs bg-[#0066FF] hover:bg-[#0052CC]"
             >
-              Upgrade to Pro
+              Upgrade via Razorpay (₹2,499)
             </Button>
           </div>
 

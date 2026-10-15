@@ -82,14 +82,25 @@ class EligibilityFilter:
         text = resume.full_text.lower()
         rejection_reasons: List[str] = []
 
-        # 1. Python Evidence Check
+        # 1. Mandatory Skills / Python Evidence Check
         python_evidence = cls._find_evidence(text, PYTHON_CORE_PATTERNS)
-        if not python_evidence:
-            rejection_reasons.append("No evidence of Python stack")
+
+        # Check required skills from preferences (defaulting to ["python"])
+        req_skills = preferences.required_skills if (preferences and preferences.required_skills) else ["python"]
+        for skill in req_skills:
+            s_clean = skill.strip().lower()
+            if s_clean in ["python", "python3"]:
+                if not python_evidence and "No evidence of Python stack" not in rejection_reasons:
+                    rejection_reasons.append("No evidence of Python stack")
+            else:
+                pat = r'\b' + re.escape(s_clean) + r'\b'
+                if not re.search(pat, text, re.IGNORECASE) and not any(s_clean in s.lower() for s in resume.skills):
+                    rejection_reasons.append(f"Missing mandatory required skill: '{skill.strip()}'")
 
         # 2. AI / Agentic Evidence Check
+        require_ai = preferences.require_ai_project if preferences is not None else True
         ai_evidence = cls._find_evidence(text, AI_AGENTIC_PATTERNS)
-        if not ai_evidence:
+        if require_ai and not ai_evidence:
             rejection_reasons.append("No AI/agentic project evidence")
 
         # 3. Dynamic User Filters (if enabled)

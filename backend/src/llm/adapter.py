@@ -2,11 +2,13 @@
 
 import json
 import logging
+import hashlib
 from abc import ABC, abstractmethod
 from typing import Optional, List, Dict, Any
 import httpx
 
 from src.config import settings
+from src.models import ProjectEvaluationResult
 
 logger = logging.getLogger(__name__)
 
@@ -28,6 +30,18 @@ class BaseLLMAdapter(ABC):
         github_summary: str,
     ) -> str:
         """Generate an explainable 50 to 100 word evaluation justification."""
+        pass
+
+    @abstractmethod
+    def evaluate_projects(
+        self,
+        candidate_name: str,
+        projects_text: str,
+        experience_text: str,
+        skills: List[str],
+        full_text: str = "",
+    ) -> ProjectEvaluationResult:
+        """Analyze candidate projects for quantity, architectural depth, and authenticity."""
         pass
 
 
@@ -117,6 +131,145 @@ class OpenAIAdapter(BaseLLMAdapter):
             concerns, rejection_reasons, matched_skills, github_summary
         )
 
+    def evaluate_projects(
+        self,
+        candidate_name: str,
+        projects_text: str,
+        experience_text: str,
+        skills: List[str],
+        full_text: str = "",
+    ) -> ProjectEvaluationResult:
+        """Analyze candidate projects using LLM completions with structured JSON output."""
+        sys_prompt = (
+            "You are a Principal AI Architect screening candidate resumes for an AI Engineering role.\n"
+            "Analyze the candidate's actual projects, experience, and technical accomplishments to evaluate project quantity and AI architecture depth.\n\n"
+            "SCORING RUBRIC (Max 40 points):\n"
+            "- Stateful multi-agent orchestration, LangGraph, CrewAI, AutoGen, tool calling (up to 15 pts)\n"
+            "- Production RAG, hybrid search, rerankers, vector databases (ChromaDB, FAISS, Pinecone, Qdrant) (up to 12 pts)\n"
+            "- AI evaluation pipelines (Ragas, TruLens, LangSmith), fine-tuning, streaming SSE (up to 8 pts)\n"
+            "- Production architecture, caching, guardrails, error recovery (up to 5 pts)\n"
+            "- PENALTIES:\n"
+            "  * Deduct 10-12 pts if projects are thin LLM wrappers without retrieval or agentic state.\n"
+            "  * Deduct 8-10 pts for generic tutorial clones (Iris, Titanic, Chat-with-PDF boilerplate, basic todo app).\n\n"
+            "Return ONLY a valid JSON object matching this schema:\n"
+            "{\n"
+            '  "project_count": <int, total distinct projects found>,\n'
+            '  "ai_project_score": <float, between 0.0 and 40.0>,\n'
+            '  "project_titles": [<string>, ...],\n'
+            '  "strengths": [<string>, ...],\n'
+            '  "penalties": [<string>, ...],\n'
+            '  "is_tutorial_or_shallow": <boolean>,\n'
+            '  "architectural_summary": "<string, 1-2 concise sentences summarizing technical depth>"\n'
+            "}"
+        )
+
+        user_prompt = (
+            f"Candidate Name: {candidate_name}\n"
+            f"Skills: {', '.join(skills[:20]) if skills else 'Not specified'}\n\n"
+            f"PROJECTS SECTION:\n"
+            f"{projects_text[:2500] if projects_text.strip() else 'No separate projects section found.'}\n\n"
+            f"WORK / RELEVANT EXPERIENCE:\n"
+            f"{experience_text[:1500] if experience_text.strip() else 'None listed.'}"
+        )
+
+        source = "groq" if ("groq" in self.base_url.lower() or "groq" in self.model.lower()) else "openai"
+
+        for attempt in range(2):
+            try:
+                with httpx.Client(timeout=15.0) as client:
+                    resp = client.post(
+                        f"{self.base_url}/chat/completions",
+                        headers={
+                            "Authorization": f"Bearer {self.api_key}",
+                            "Content-Type": "application/json",
+                        },
+                        json={
+                            "model": self.model,
+                            "messages": [
+                                {"role": "system", "content": sys_prompt},
+                                {"role": "user", "content": user_prompt},
+                            ],
+                            "response_format": {"type": "json_object"},
+                            "temperature": 0.1,
+                            "max_tokens": 500,
+                        },
+                    )
+                    if resp.status_code == 200:
+                        raw_content = resp.json()["choices"][0]["message"]["content"].strip()
+                        # Strip any markdown code fences if present
+                        if raw_content.startswith("```"):
+                            lines = raw_content.splitlines()
+                            if lines[0].startswith("```"):
+                                lines = lines[1:]
+                            if lines and lines[-1].startswith("```"):
+                                lines = lines[:-1]
+                            raw_content = "\n".join(lines).strip()
+
+                        data = json.loads(raw_content)
+
+                        # Extract with tolerant key aliasing
+                        p_count = data.get("project_count")
+                        if p_count is None:
+                            p_count = data.get("genuine_project_count", 0)
+                        try:
+                            p_count = max(0, int(p_count))
+                        except (ValueError, TypeError):
+                            p_count = 0
+
+                        p_score = data.get("ai_project_score")
+                        if p_score is None:
+                            p_score = data.get("ai_project_depth_score")
+                        if p_score is None:
+                            p_score = data.get("ai_score") or data.get("score") or 0.0
+                        try:
+                            p_score = round(min(40.0, max(0.0, float(p_score))), 1)
+                        except (ValueError, TypeError):
+                            p_score = 0.0
+
+                        p_titles = data.get("project_titles") or data.get("titles") or []
+                        if isinstance(p_titles, str):
+                            p_titles = [p_titles]
+
+                        strengths = data.get("strengths") or data.get("architectural_strengths") or []
+                        if isinstance(strengths, str):
+                            strengths = [strengths]
+
+                        penalties = data.get("penalties") or data.get("penalties_red_flags") or []
+                        if isinstance(penalties, str):
+                            penalties = [penalties]
+
+                        is_shallow = bool(data.get("is_tutorial_or_shallow") or data.get("mostly_shallow_tutorial_copies") or False)
+                        arch_summary = data.get("architectural_summary") or data.get("summary") or ""
+
+                        return ProjectEvaluationResult(
+                            project_count=p_count,
+                            ai_project_score=p_score,
+                            project_titles=[str(t).strip() for t in p_titles if str(t).strip()],
+                            strengths=[str(s).strip() for s in strengths if str(s).strip()],
+                            penalties=[str(p).strip() for p in penalties if str(p).strip()],
+                            is_tutorial_or_shallow=is_shallow,
+                            architectural_summary=str(arch_summary).strip(),
+                            evaluation_source=source,
+                        )
+                    elif resp.status_code == 429 and attempt == 0:
+                        import time
+                        time.sleep(1.5)
+                        continue
+                    else:
+                        logger.warning(f"{source.upper()} API non-200 ({resp.status_code}): {resp.text[:250]}")
+                        break
+            except Exception as e:
+                if attempt == 0:
+                    import time
+                    time.sleep(1.0)
+                    continue
+                logger.warning(f"{source.upper()} API project evaluation call failed, falling back to heuristic: {e}")
+                break
+
+        return HeuristicAdapter().evaluate_projects(
+            candidate_name, projects_text, experience_text, skills, full_text
+        )
+
 
 class GroqAdapter(OpenAIAdapter):
     """Groq API adapter (OpenAI-compatible /chat/completions). Supports Qwen, Llama, etc."""
@@ -183,6 +336,102 @@ class GeminiAdapter(BaseLLMAdapter):
             concerns, rejection_reasons, matched_skills, github_summary
         )
 
+    def evaluate_projects(
+        self,
+        candidate_name: str,
+        projects_text: str,
+        experience_text: str,
+        skills: List[str],
+        full_text: str = "",
+    ) -> ProjectEvaluationResult:
+        """Analyze candidate projects using Google Gemini with structured JSON output."""
+        sys_prompt = (
+            "You are a Principal AI Architect screening candidate resumes for an AI Engineering role.\n"
+            "Analyze the candidate's actual projects, experience, and technical accomplishments to evaluate project quantity and AI architecture depth.\n\n"
+            "SCORING RUBRIC (Max 40 points):\n"
+            "- Stateful multi-agent orchestration, LangGraph, CrewAI, AutoGen, tool calling (up to 15 pts)\n"
+            "- Production RAG, hybrid search, rerankers, vector databases (ChromaDB, FAISS, Pinecone, Qdrant) (up to 12 pts)\n"
+            "- AI evaluation pipelines (Ragas, TruLens, LangSmith), fine-tuning, streaming SSE (up to 8 pts)\n"
+            "- Production architecture, caching, guardrails, error recovery (up to 5 pts)\n"
+            "- PENALTIES:\n"
+            "  * Deduct 10-12 pts if projects are thin LLM wrappers without retrieval or agentic state.\n"
+            "  * Deduct 8-10 pts for generic tutorial clones (Iris, Titanic, Chat-with-PDF boilerplate, basic todo app).\n\n"
+            "Return ONLY a valid JSON object matching this schema:\n"
+            "{\n"
+            '  "project_count": <int, total distinct projects found>,\n'
+            '  "ai_project_score": <float, between 0.0 and 40.0>,\n'
+            '  "project_titles": [<string>, ...],\n'
+            '  "strengths": [<string>, ...],\n'
+            '  "penalties": [<string>, ...],\n'
+            '  "is_tutorial_or_shallow": <boolean>,\n'
+            '  "architectural_summary": "<string, 1-2 concise sentences summarizing technical depth>"\n'
+            "}"
+        )
+
+        user_prompt = (
+            f"Candidate Name: {candidate_name}\n"
+            f"Skills: {', '.join(skills[:20]) if skills else 'Not specified'}\n\n"
+            f"PROJECTS SECTION:\n"
+            f"{projects_text[:2500] if projects_text.strip() else 'No separate projects section found.'}\n\n"
+            f"WORK / RELEVANT EXPERIENCE:\n"
+            f"{experience_text[:1500] if experience_text.strip() else 'None listed.'}"
+        )
+
+        url = f"https://generativelanguage.googleapis.com/v1beta/models/{self.model}:generateContent?key={self.api_key}"
+
+        try:
+            with httpx.Client(timeout=15.0) as client:
+                resp = client.post(
+                    url,
+                    json={
+                        "system_instruction": {"parts": [{"text": sys_prompt}]},
+                        "contents": [{"parts": [{"text": user_prompt}]}],
+                        "generationConfig": {
+                            "response_mime_type": "application/json",
+                            "temperature": 0.1,
+                        },
+                    },
+                    headers={"Content-Type": "application/json"},
+                )
+                if resp.status_code == 200:
+                    raw_content = resp.json()["candidates"][0]["content"]["parts"][0]["text"].strip()
+                    data = json.loads(raw_content)
+
+                    p_count = data.get("project_count", 0)
+                    try:
+                        p_count = max(0, int(p_count))
+                    except (ValueError, TypeError):
+                        p_count = 0
+
+                    p_score = data.get("ai_project_score") or data.get("score") or 0.0
+                    try:
+                        p_score = round(min(40.0, max(0.0, float(p_score))), 1)
+                    except (ValueError, TypeError):
+                        p_score = 0.0
+
+                    p_titles = data.get("project_titles") or []
+                    strengths = data.get("strengths") or []
+                    penalties = data.get("penalties") or []
+                    is_shallow = bool(data.get("is_tutorial_or_shallow", False))
+                    arch_summary = data.get("architectural_summary") or ""
+
+                    return ProjectEvaluationResult(
+                        project_count=p_count,
+                        ai_project_score=p_score,
+                        project_titles=[str(t).strip() for t in p_titles if str(t).strip()],
+                        strengths=[str(s).strip() for s in strengths if str(s).strip()],
+                        penalties=[str(p).strip() for p in penalties if str(p).strip()],
+                        is_tutorial_or_shallow=is_shallow,
+                        architectural_summary=arch_summary,
+                        evaluation_source="gemini",
+                    )
+        except Exception as e:
+            logger.warning(f"Gemini evaluate_projects call failed, falling back to heuristic: {e}")
+
+        return HeuristicAdapter().evaluate_projects(
+            candidate_name, projects_text, experience_text, skills, full_text
+        )
+
 
 class AnthropicAdapter(BaseLLMAdapter):
     """Anthropic Messages API adapter (Claude models)."""
@@ -247,6 +496,18 @@ class AnthropicAdapter(BaseLLMAdapter):
         return HeuristicAdapter().generate_narrative_reason(
             candidate_name, eligible, total_score, breakdown_dict, strengths,
             concerns, rejection_reasons, matched_skills, github_summary
+        )
+
+    def evaluate_projects(
+        self,
+        candidate_name: str,
+        projects_text: str,
+        experience_text: str,
+        skills: List[str],
+        full_text: str = "",
+    ) -> ProjectEvaluationResult:
+        return HeuristicAdapter().evaluate_projects(
+            candidate_name, projects_text, experience_text, skills, full_text
         )
 
 
@@ -347,6 +608,189 @@ class HeuristicAdapter(BaseLLMAdapter):
                 f"Interview focus should be {c_text.lower()}, but overall internship readiness is high."
             )
         return self._ensure_word_count(full, 55, 95)
+
+    def evaluate_projects(
+        self,
+        candidate_name: str,
+        projects_text: str,
+        experience_text: str,
+        skills: List[str],
+        full_text: str = "",
+    ) -> ProjectEvaluationResult:
+        """Deterministic heuristic project evaluator counting projects and assessing AI depth."""
+        import re
+
+        combined = f"{projects_text}\n{experience_text}\n{full_text}".lower()
+        strengths: List[str] = []
+        penalties: List[str] = []
+        titles: List[str] = []
+
+        # 1. Project Quantity Detection
+        if projects_text.strip():
+            matches = re.findall(
+                r"(?:^|\n)\s*(?:(?:\d+[\.\)]|\#\#\#|\*|\-)\s*([A-Za-z0-9\s\-_]{3,45})|\bproject:\s*([A-Za-z0-9\s\-_]{3,45}))",
+                projects_text,
+                re.IGNORECASE,
+            )
+            for m in matches:
+                title = (m[0] or m[1]).strip()
+                if title and len(title) > 3 and not title.lower().startswith(("http", "github", "demo")):
+                    titles.append(title)
+
+            if not titles:
+                blocks = [b.strip() for b in projects_text.split("\n\n") if len(b.strip()) > 30]
+                project_count = max(1, len(blocks))
+            else:
+                project_count = max(1, len(titles))
+        elif experience_text.strip():
+            project_count = 1
+        else:
+            project_count = 0
+
+        # 2. Rubric-based AI Project Depth scoring (0-40)
+        ai_score = 0.0
+
+        if any(k in combined for k in ["langgraph", "multi-agent", "multi agent", "autogen", "crewai"]):
+            ai_score += 15.0
+            strengths.append("Stateful multi-agent orchestration (LangGraph/CrewAI/AutoGen)")
+        elif any(k in combined for k in ["langchain", "tool-calling", "tool calling", "function calling", "adk"]):
+            ai_score += 11.0
+            strengths.append("Agentic workflow with tool/function calling")
+        elif any(k in combined for k in ["agent", "agents"]):
+            ai_score += 7.0
+            strengths.append("Basic agent implementation")
+
+        if any(k in combined for k in ["hybrid search", "rerank", "reranker", "advanced rag"]):
+            ai_score += 12.0
+            strengths.append("Advanced RAG with hybrid search and reranking")
+        elif any(k in combined for k in ["chromadb", "faiss", "pinecone", "qdrant", "weaviate"]):
+            ai_score += 9.0
+            strengths.append("Vector database retrieval (ChromaDB/FAISS/Pinecone/Qdrant)")
+        elif any(k in combined for k in ["rag", "embeddings", "vector search", "llamaindex"]):
+            ai_score += 7.0
+            strengths.append("Embeddings-based retrieval system")
+
+        if any(k in combined for k in ["ragas", "trulens", "langsmith", "llm-as-a-judge", "evaluation"]):
+            ai_score += 8.0
+            strengths.append("AI evaluation pipeline (Ragas/LangSmith/TruLens)")
+        elif any(k in combined for k in ["fine-tuning", "lora", "transformers", "prompt engineering"]):
+            ai_score += 4.0
+
+        if any(k in combined for k in ["streaming", "sse", "memory", "state", "guardrails"]):
+            ai_score += 5.0
+
+        ai_score = min(40.0, ai_score)
+
+        is_shallow = False
+        if any(k in combined for k in ["openai", "gemini", "chatgpt"]) and not any(
+            k in combined for k in ["rag", "vector", "langgraph", "tool", "agent", "chromadb", "faiss", "pinecone", "retrieval"]
+        ):
+            penalty = 12.0
+            ai_score = max(5.0, ai_score - penalty)
+            penalties.append(f"Deducted {penalty:.0f} pts: Thin LLM wrapper without retrieval/state/agentic logic")
+            is_shallow = True
+
+        if any(t in combined for t in ["titanic", "chat with pdf", "todo app", "iris dataset"]):
+            if "evaluation" not in combined and "production" not in combined:
+                penalty = 8.0
+                ai_score = max(0.0, ai_score - penalty)
+                penalties.append(f"Deducted {penalty:.0f} pts: Tutorial-style project without production ownership")
+                is_shallow = True
+
+        ai_score = round(ai_score, 1)
+
+        # Extract candidate's specific technologies mentioned
+        detected_techs = []
+        tech_keywords = [
+            ("LangGraph", ["langgraph"]),
+            ("CrewAI", ["crewai"]),
+            ("AutoGen", ["autogen"]),
+            ("LangChain", ["langchain"]),
+            ("LlamaIndex", ["llamaindex"]),
+            ("Pinecone", ["pinecone"]),
+            ("ChromaDB", ["chromadb"]),
+            ("FAISS", ["faiss"]),
+            ("Qdrant", ["qdrant"]),
+            ("Weaviate", ["weaviate"]),
+            ("Redis", ["redis"]),
+            ("FastAPI", ["fastapi"]),
+            ("Django", ["django"]),
+            ("PostgreSQL", ["postgresql", "postgres"]),
+            ("Docker", ["docker"]),
+            ("Kafka", ["kafka"]),
+            ("Celery", ["celery"]),
+            ("Azure OpenAI", ["azure openai"]),
+            ("Gemini", ["gemini"]),
+            ("OpenAI", ["openai"]),
+            ("Ragas", ["ragas"]),
+            ("LangSmith", ["langsmith"]),
+            ("TruLens", ["trulens"]),
+        ]
+        for display_name, aliases in tech_keywords:
+            if any(a in combined for a in aliases):
+                detected_techs.append(display_name)
+
+        # Deterministic seed from candidate name
+        seed = int(hashlib.md5(candidate_name.encode()).hexdigest(), 16)
+
+        # Build candidate-specific project anchor
+        if titles:
+            primary_project = f"'{titles[0]}'"
+        elif project_count > 1:
+            primary_project = f"{project_count} engineering projects"
+        elif project_count == 1:
+            primary_project = "a core AI application"
+        else:
+            primary_project = "technical engineering workflows"
+
+        if detected_techs:
+            rot_t = seed % len(detected_techs)
+            chosen_techs = (detected_techs[rot_t:] + detected_techs[:rot_t])[:3]
+            tech_str = ", ".join(chosen_techs)
+        else:
+            tech_str = "Python services and modern AI tools"
+
+        if strengths:
+            rot_s = seed % len(strengths)
+            chosen_strengths = (strengths[rot_s:] + strengths[:rot_s])
+            s1 = chosen_strengths[0]
+            s2 = chosen_strengths[1] if len(chosen_strengths) > 1 else None
+        else:
+            s1 = "Python backend services"
+            s2 = None
+
+        template_variant = seed % 4
+        if template_variant == 0:
+            arch_summary = (
+                f"Built {primary_project} focusing on {s1.lower()}"
+                f"{f' alongside {s2.lower()}' if s2 and s2 != s1 else ''}, leveraging {tech_str}."
+            )
+        elif template_variant == 1:
+            arch_summary = (
+                f"Engineered {primary_project} utilizing {tech_str} "
+                f"to power {s1.lower()}."
+            )
+        elif template_variant == 2:
+            arch_summary = (
+                f"Delivered {primary_project} demonstrating {s1.lower()} "
+                f"with robust integration of {tech_str}."
+            )
+        else:
+            arch_summary = (
+                f"Demonstrates hands-on implementation in {primary_project} "
+                f"combining {tech_str}{f' and {s1.lower()}' if s1 else ''}."
+            )
+
+        return ProjectEvaluationResult(
+            project_count=project_count,
+            ai_project_score=ai_score,
+            project_titles=titles[:5],
+            strengths=strengths,
+            penalties=penalties,
+            is_tutorial_or_shallow=is_shallow,
+            architectural_summary=arch_summary,
+            evaluation_source="heuristic",
+        )
 
     @staticmethod
     def _ensure_word_count(text: str, min_words: int, max_words: int) -> str:
