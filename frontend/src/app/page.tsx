@@ -34,6 +34,7 @@ import {
   upgradeUserTier,
 } from "@/lib/api";
 import { getSupabaseClient } from "@/lib/supabase";
+import { useToast } from "@/context/ToastContext";
 import type { ActiveTab, CandidateResult, ScreeningReport, TopNLimit, UserQuota } from "@/lib/types";
 
 const TOPN_OPTIONS: { value: TopNLimit; label: string }[] = [
@@ -45,6 +46,7 @@ const TOPN_OPTIONS: { value: TopNLimit; label: string }[] = [
 
 export default function DashboardPage() {
   const router = useRouter();
+  const { showError, showSuccess, showWarning } = useToast();
   const [report, setReport] = useState<ScreeningReport | null>(null);
   const [busy, setBusy] = useState(false);
   const [loadingMsg, setLoadingMsg] = useState("");
@@ -74,6 +76,11 @@ export default function DashboardPage() {
   }
 
   useEffect(() => {
+    // Strip stale empty hash (e.g. "/#" left by OAuth redirects or
+    // placeholder links) so the URL stays clean.
+    if (typeof window !== "undefined" && window.location.hash === "#") {
+      history.replaceState(null, "", window.location.pathname + window.location.search);
+    }
     // Theme initialization (defaults to dark mode)
     const saved = typeof window !== "undefined" ? localStorage.getItem("talentlens-theme") : null;
     const initialDark = saved !== null ? saved === "dark" : true;
@@ -143,19 +150,31 @@ export default function DashboardPage() {
 
   async function runSample() {
     setBusy(true);
-    setLoadingMsg("Screening 50 sample resumes from resumes/ directory…");
+    setLoadingMsg("Screening 50 sample engineering resumes with Groq intelligence…");
     try {
       const r = await screenSampleResumes();
       setReport(r);
       setActiveTab("eligible");
       refreshQuota();
+      showSuccess("Screening Complete!", `Successfully evaluated and ranked ${r.ranked_candidates.length} candidates.`);
     } catch (e: unknown) {
       const msg = e instanceof Error ? e.message : String(e);
       refreshQuota();
-      if (msg.includes("limit reached") || msg.includes("Upgrade to Recruiter Pro") || msg.includes("403")) {
+      const isLimit = msg.includes("limit reached") || msg.includes("Upgrade to Recruiter Pro") || msg.includes("403");
+      if (isLimit) {
         setPricingOpen(true);
+        showError("Plan Limit Reached", msg, {
+          label: "Upgrade Plan",
+          onClick: () => setPricingOpen(true),
+        });
+      } else {
+        const isRenderCold = msg.includes("Failed to fetch") || msg.includes("NetworkError") || msg.includes("503") || msg.includes("504");
+        if (isRenderCold) {
+          showWarning("Backend Initializing", "Render cloud server is spinning up. Please wait 15-20 seconds and click again.");
+        } else {
+          showError("Screening Failed", msg);
+        }
       }
-      alert("Error screening resumes: " + msg);
     } finally {
       setBusy(false);
     }
@@ -164,19 +183,31 @@ export default function DashboardPage() {
   async function runUpload(files: File[]) {
     if (files.length === 0) return runSample();
     setBusy(true);
-    setLoadingMsg(`Uploading and parsing ${files.length} resumes…`);
+    setLoadingMsg(`Uploading and parsing ${files.length} resume(s)…`);
     try {
       const r = await uploadAndScreen(files);
       setReport(r);
       setActiveTab("eligible");
       refreshQuota();
+      showSuccess("Upload & Screening Done!", `Processed ${files.length} resumes; ${r.ranked_candidates.length} candidates ranked eligible.`);
     } catch (e: unknown) {
       const msg = e instanceof Error ? e.message : String(e);
       refreshQuota();
-      if (msg.includes("limit reached") || msg.includes("Upgrade to Recruiter Pro") || msg.includes("403")) {
+      const isLimit = msg.includes("limit reached") || msg.includes("Upgrade to Recruiter Pro") || msg.includes("403");
+      if (isLimit) {
         setPricingOpen(true);
+        showError("Upload Limit Reached", msg, {
+          label: "Upgrade Plan",
+          onClick: () => setPricingOpen(true),
+        });
+      } else {
+        const isRenderCold = msg.includes("Failed to fetch") || msg.includes("NetworkError") || msg.includes("503") || msg.includes("504");
+        if (isRenderCold) {
+          showWarning("Backend Initializing", "Render cloud backend is waking up. Please retry shortly.");
+        } else {
+          showError("Upload Failed", msg);
+        }
       }
-      alert("Upload failed: " + msg);
     } finally {
       setBusy(false);
     }
@@ -235,7 +266,7 @@ export default function DashboardPage() {
     try {
       await fn();
     } catch (e: unknown) {
-      alert("Export failed: " + (e instanceof Error ? e.message : String(e)));
+      showError("Export Failed", e instanceof Error ? e.message : String(e));
     } finally {
       setBusy(false);
     }
@@ -369,10 +400,13 @@ export default function DashboardPage() {
               userEmail: userEmail,
               onSuccess: (updated) => {
                 setQuota(updated);
-                alert("Payment verified successfully! Your account is upgraded to Recruiter Pro (₹2,499 / $29). 30 screening runs & up to 100 resumes per batch unlocked.");
+                showSuccess(
+                  "Payment Verified Successfully!",
+                  "Your account is upgraded to Recruiter Pro (₹2,499 / $29). 30 screening runs & up to 100 resumes per batch unlocked."
+                );
               },
               onError: (e) => {
-                alert("Payment failed or cancelled: " + e.message);
+                showError("Payment Failed", e.message);
               },
             });
           }

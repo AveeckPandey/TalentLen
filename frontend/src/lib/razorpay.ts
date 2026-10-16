@@ -1,6 +1,5 @@
-"use client";
-
 import { createRazorpayOrder, verifyRazorpayPayment } from "./api";
+import { toast } from "@/context/ToastContext";
 import type { PlanTier, UserQuota } from "./types";
 
 /**
@@ -88,7 +87,7 @@ export async function openRazorpayCheckout({
           onSuccess(verification.quota);
         } catch (verifErr: any) {
           if (onError) onError(verifErr);
-          else alert(`Payment verification failed: ${verifErr.message}`);
+          else toast.error("Payment Verification Failed", verifErr.message);
         }
       },
       prefill: {
@@ -108,12 +107,12 @@ export async function openRazorpayCheckout({
     rzp.on("payment.failed", function (response: any) {
       const err = new Error(response.error?.description || "Payment failed or cancelled.");
       if (onError) onError(err);
-      else alert(`Payment Failed: ${err.message}`);
+      else toast.error("Payment Failed", err.message);
     });
 
     rzp.open();
   } catch (err: any) {
     if (onError) onError(err);
-    else alert(`Checkout error: ${err.message}`);
+    else toast.error("Checkout Error", err.message);
   }
 }

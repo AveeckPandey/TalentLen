@@ -17,11 +17,11 @@ export interface FooterProps {
 }
 
 const LEGAL_LINKS = [
-  { label: "Terms of Service", href: "#" },
-  { label: "General Terms and Conditions", href: "#" },
-  { label: "Privacy Policy", href: "#" },
-  { label: "Cookie Policy", href: "#" },
-  { label: "Imprint", href: "#" },
+  { label: "Terms of Service", href: "/" },
+  { label: "General Terms and Conditions", href: "/" },
+  { label: "Privacy Policy", href: "/" },
+  { label: "Cookie Policy", href: "/" },
+  { label: "Imprint", href: "/" },
 ];
 
 const SOCIAL_LINKS = [

@@ -1,6 +1,7 @@
 "use client";
 
 import { useRef, useState, type DragEvent } from "react";
+import { useToast } from "@/context/ToastContext";
 
 interface Props {
   busy: boolean;
@@ -11,6 +12,7 @@ interface Props {
 const ACCEPT = /\.(pdf|docx|txt|doc|md)$/i;
 
 export default function HeroUpload({ busy, onRunUpload, onRunSample }: Props) {
+  const { showError, showWarning } = useToast();
   const [dragActive, setDragActive] = useState(false);
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -20,11 +22,11 @@ export default function HeroUpload({ busy, onRunUpload, onRunSample }: Props) {
     if (!list) return;
     let valid = Array.from(list).filter((f) => ACCEPT.test(f.name));
     if (valid.length === 0) {
-      alert("Please select supported resume files (PDF, DOCX, TXT).");
+      showError("Unsupported Files", "Please select supported resume formats: PDF, DOCX, DOC, TXT, or MD.");
       return;
     }
     if (valid.length > 100) {
-      alert("Notice: Maximum 100 resumes per batch. First 100 selected.");
+      showWarning("Batch Limit", "Maximum 100 resumes per batch. The first 100 resumes will be screened.");
       valid = valid.slice(0, 100);
     }
     setSelectedFiles(valid);

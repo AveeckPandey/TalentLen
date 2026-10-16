@@ -33,6 +33,7 @@ import {
   deleteScreeningHistory,
 } from "@/lib/api";
 import { getSupabaseClient } from "@/lib/supabase";
+import { useToast } from "@/context/ToastContext";
 import type {
   ActiveTab,
   CandidateResult,
@@ -51,6 +52,7 @@ const TOPN_OPTIONS: { value: TopNLimit; label: string }[] = [
 
 export default function CandidateDashboardPage() {
   const router = useRouter();
+  const { showError, showSuccess, showWarning } = useToast();
   const [report, setReport] = useState<ScreeningReport | null>(null);
   const [busy, setBusy] = useState(false);
   const [loadingMsg, setLoadingMsg] = useState("");
@@ -105,8 +107,9 @@ export default function CandidateDashboardPage() {
       const past = await loadScreeningHistory(batchId);
       setReport(past);
       setActiveTab("eligible");
+      showSuccess("Shortlist Loaded", `Loaded batch with ${past.ranked_candidates.length} ranked candidate(s).`);
     } catch (e: any) {
-      alert("Failed to load shortlist: " + e.message);
+      showError("Failed to Load Shortlist", e.message);
     } finally {
       setBusy(false);
     }
@@ -118,8 +121,9 @@ export default function CandidateDashboardPage() {
     try {
       await deleteScreeningHistory(batchId);
       setHistory((prev) => prev.filter((h) => h.batch_id !== batchId));
+      showSuccess("Shortlist Deleted", "The shortlisting batch has been removed from your history.");
     } catch (err: any) {
-      alert("Failed to delete record: " + err.message);
+      showError("Failed to Delete", err.message);
     }
   }
 
@@ -190,13 +194,25 @@ export default function CandidateDashboardPage() {
       setActiveTab("eligible");
       refreshQuota();
       refreshHistory();
+      showSuccess("Screening Complete!", `Successfully screened ${r.ranked_candidates.length} eligible candidate(s).`);
     } catch (e: unknown) {
       const msg = e instanceof Error ? e.message : String(e);
       refreshQuota();
-      if (msg.includes("limit reached") || msg.includes("Upgrade to Recruiter Pro") || msg.includes("403")) {
+      const isLimit = msg.includes("limit reached") || msg.includes("Upgrade to Recruiter Pro") || msg.includes("403");
+      if (isLimit) {
         setPricingOpen(true);
+        showError("Plan Limit Reached", msg, {
+          label: "Upgrade Plan",
+          onClick: () => setPricingOpen(true),
+        });
+      } else {
+        const isRenderCold = msg.includes("Failed to fetch") || msg.includes("NetworkError") || msg.includes("503") || msg.includes("504");
+        if (isRenderCold) {
+          showWarning("Backend Initializing", "Render cloud server is warming up. Please wait ~15-20s and try again.");
+        } else {
+          showError("Screening Failed", msg);
+        }
       }
-      alert("Error screening resumes: " + msg);
     } finally {
       setBusy(false);
     }
@@ -212,13 +228,25 @@ export default function CandidateDashboardPage() {
       setActiveTab("eligible");
       refreshQuota();
       refreshHistory();
+      showSuccess("Upload Complete!", `Ranked ${r.ranked_candidates.length} candidates from your upload.`);
     } catch (e: unknown) {
       const msg = e instanceof Error ? e.message : String(e);
       refreshQuota();
-      if (msg.includes("limit reached") || msg.includes("Upgrade to Recruiter Pro") || msg.includes("403")) {
+      const isLimit = msg.includes("limit reached") || msg.includes("Upgrade to Recruiter Pro") || msg.includes("403");
+      if (isLimit) {
         setPricingOpen(true);
+        showError("Upload Limit Reached", msg, {
+          label: "Upgrade Plan",
+          onClick: () => setPricingOpen(true),
+        });
+      } else {
+        const isRenderCold = msg.includes("Failed to fetch") || msg.includes("NetworkError") || msg.includes("503") || msg.includes("504");
+        if (isRenderCold) {
+          showWarning("Backend Initializing", "Render cloud backend is waking up. Please retry in a moment.");
+        } else {
+          showError("Upload Failed", msg);
+        }
       }
-      alert("Upload failed: " + msg);
     } finally {
       setBusy(false);
     }
@@ -296,7 +324,7 @@ export default function CandidateDashboardPage() {
     try {
       await fn();
     } catch (e: unknown) {
-      alert("Export failed: " + (e instanceof Error ? e.message : String(e)));
+      showError("Export Failed", e instanceof Error ? e.message : String(e));
     } finally {
       setBusy(false);
     }
@@ -648,10 +676,13 @@ export default function CandidateDashboardPage() {
               userEmail: userEmail,
               onSuccess: (updated) => {
                 setQuota(updated);
-                alert("Payment verified successfully! Your account is upgraded to Recruiter Pro (₹2,499 / $29). 30 screening runs & up to 100 resumes per batch unlocked.");
+                showSuccess(
+                  "Payment Verified Successfully!",
+                  "Your account is upgraded to Recruiter Pro (₹2,499 / $29). 30 screening runs & up to 100 resumes per batch unlocked."
+                );
               },
               onError: (e) => {
-                alert("Payment failed or cancelled: " + e.message);
+                showError("Payment Failed", e.message);
               },
             });
           }

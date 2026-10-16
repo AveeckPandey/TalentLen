@@ -197,11 +197,6 @@ export default function QualityShowcase() {
     <section className="py-12 sm:py-16">
       {/* Section Header */}
       <div className="text-center space-y-3 max-w-3xl mx-auto px-4">
-        <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-50 dark:bg-blue-950/50 border border-blue-200 dark:border-blue-900 text-xs font-semibold text-[#0066FF] dark:text-blue-400">
-          <span>🛡️ Merit-First Evaluation</span>
-          <span>•</span>
-          <span>Zero Unconscious Bias</span>
-        </div>
         <h2 className="text-2xl sm:text-3xl lg:text-4xl font-extrabold text-neutral-900 dark:text-white tracking-tight">
           Good quality candidates scanned by AI with zero bias
         </h2>

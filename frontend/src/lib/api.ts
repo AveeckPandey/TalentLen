@@ -10,6 +10,55 @@ import type {
   ScreeningHistoryItem,
 } from "./types";
 
+const LIVE_BACKEND_URL = "https://backend-talentlens.onrender.com";
+
+export function getApiBaseUrl(): string {
+  // 1. Explicit env var if set
+  const envUrl = process.env.NEXT_PUBLIC_API_URL || process.env.API_URL;
+  if (envUrl && !envUrl.includes("127.0.0.1") && !envUrl.includes("localhost")) {
+    return envUrl.replace(/\/+$/, "");
+  }
+
+  // 2. Client-side browser execution
+  if (typeof window !== "undefined") {
+    // If running locally on localhost, use local proxy or relative URL
+    if (window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1") {
+      return envUrl ? envUrl.replace(/\/+$/, "") : "";
+    }
+    // Deployed on Vercel / custom domain (talentlens.buildwithaveeck.com) -> use live Render backend directly
+    return LIVE_BACKEND_URL;
+  }
+
+  // 3. Server-side in Node/Next.js
+  return envUrl && !envUrl.includes("127.0.0.1") ? envUrl.replace(/\/+$/, "") : LIVE_BACKEND_URL;
+}
+
+export function apiUrl(path: string): string {
+  const base = getApiBaseUrl();
+  const cleanPath = path.startsWith("/") ? path : `/${path}`;
+  return base ? `${base}${cleanPath}` : cleanPath;
+}
+
+async function handleResponseError(resp: Response, fallbackPrefix: string): Promise<never> {
+  let message = `${fallbackPrefix} (${resp.status})`;
+  try {
+    const text = await resp.text();
+    try {
+      const json = JSON.parse(text);
+      if (json && json.detail) {
+        message = typeof json.detail === "string" ? json.detail : JSON.stringify(json.detail);
+      } else if (text) {
+        message = text;
+      }
+    } catch {
+      if (text) message = text;
+    }
+  } catch {
+    /* fallback to status */
+  }
+  throw new Error(message);
+}
+
 async function authHeader(): Promise<Record<string, string>> {
   // Supabase session is read client-side and attached as Bearer token,
   // matching the old static dashboard's authHeaders() behaviour.
@@ -31,7 +80,7 @@ export async function screenSampleResumes(): Promise<ScreeningReport> {
     "Content-Type": "application/json",
     ...(await authHeader()),
   };
-  const resp = await fetch("/screen", {
+  const resp = await fetch(apiUrl("/screen"), {
     method: "POST",
     headers,
     body: JSON.stringify({
@@ -42,7 +91,7 @@ export async function screenSampleResumes(): Promise<ScreeningReport> {
       require_github_link: false,
     }),
   });
-  if (!resp.ok) throw new Error(await resp.text());
+  if (!resp.ok) await handleResponseError(resp, "Screening failed");
   return (await resp.json()) as ScreeningReport;
 }
 
@@ -52,18 +101,18 @@ export async function uploadAndScreen(files: File[]): Promise<ScreeningReport> {
   form.append("require_ai", "true");
   form.append("require_experience", "false");
   form.append("require_github_link", "false");
-  const resp = await fetch("/upload_and_screen", {
+  const resp = await fetch(apiUrl("/upload_and_screen"), {
     method: "POST",
     headers: await authHeader(),
     body: form,
   });
-  if (!resp.ok) throw new Error(await resp.text());
+  if (!resp.ok) await handleResponseError(resp, "Upload failed");
   return (await resp.json()) as ScreeningReport;
 }
 
 export async function getResults(): Promise<ScreeningReport | null> {
   try {
-    const resp = await fetch("/results", {
+    const resp = await fetch(apiUrl("/results"), {
       method: "GET",
       headers: await authHeader(),
     });
@@ -76,14 +125,14 @@ export async function getResults(): Promise<ScreeningReport | null> {
 
 export async function clearSession(): Promise<void> {
   try {
-    await fetch("/clear", { method: "POST", headers: await authHeader() });
+    await fetch(apiUrl("/clear"), { method: "POST", headers: await authHeader() });
   } catch {
     /* best-effort */
   }
 }
 
 export function resumeUrl(fileName: string): string {
-  return `/resumes/${encodeURIComponent(fileName)}`;
+  return apiUrl(`/resumes/${encodeURIComponent(fileName)}`);
 }
 
 function downloadBlob(blob: Blob, filename: string) {
@@ -97,23 +146,23 @@ function downloadBlob(blob: Blob, filename: string) {
 
 export async function exportFilteredExcel(candidates: CandidateResult[], filterLabel: string) {
   const headers = { "Content-Type": "application/json", ...(await authHeader()) };
-  const resp = await fetch("/export_filtered_excel", {
+  const resp = await fetch(apiUrl("/export_filtered_excel"), {
     method: "POST",
     headers,
     body: JSON.stringify({ candidates, filter_label: filterLabel }),
   });
-  if (!resp.ok) throw new Error(await resp.text());
+  if (!resp.ok) await handleResponseError(resp, "Excel export failed");
   downloadBlob(await resp.blob(), `shortlist_${filterLabel.toLowerCase()}.xlsx`);
 }
 
 export async function exportFilteredDocx(candidates: CandidateResult[], filterLabel: string) {
   const headers = { "Content-Type": "application/json", ...(await authHeader()) };
-  const resp = await fetch("/export_filtered_docx", {
+  const resp = await fetch(apiUrl("/export_filtered_docx"), {
     method: "POST",
     headers,
     body: JSON.stringify({ candidates, filter_label: filterLabel }),
   });
-  if (!resp.ok) throw new Error(await resp.text());
+  if (!resp.ok) await handleResponseError(resp, "Word export failed");
   downloadBlob(await resp.blob(), `shortlist_${filterLabel.toLowerCase()}.docx`);
 }
 
@@ -166,11 +215,11 @@ export function exportFilteredJson(candidates: CandidateResult[], filterLabel: s
 }
 
 export async function getUserQuota(): Promise<UserQuota> {
-  const resp = await fetch("/api/user/quota", {
+  const resp = await fetch(apiUrl("/api/user/quota"), {
     method: "GET",
     headers: await authHeader(),
   });
-  if (!resp.ok) throw new Error(await resp.text());
+  if (!resp.ok) await handleResponseError(resp, "Failed to load quota");
   return (await resp.json()) as UserQuota;
 }
 
@@ -179,12 +228,12 @@ export async function upgradeUserTier(tier: PlanTier): Promise<UserQuota> {
     "Content-Type": "application/json",
     ...(await authHeader()),
   };
-  const resp = await fetch("/api/user/upgrade", {
+  const resp = await fetch(apiUrl("/api/user/upgrade"), {
     method: "POST",
     headers,
     body: JSON.stringify({ tier }),
   });
-  if (!resp.ok) throw new Error(await resp.text());
+  if (!resp.ok) await handleResponseError(resp, "Upgrade failed");
   return (await resp.json()) as UserQuota;
 }
 
@@ -200,15 +249,12 @@ export async function createRazorpayOrder(
     "Content-Type": "application/json",
     ...(await authHeader()),
   };
-  const resp = await fetch("/api/payments/create-order", {
+  const resp = await fetch(apiUrl("/api/payments/create-order"), {
     method: "POST",
     headers,
     body: JSON.stringify({ tier, currency }),
   });
-  if (!resp.ok) {
-    const errText = await resp.text();
-    throw new Error(errText || "Failed to create Razorpay payment order");
-  }
+  if (!resp.ok) await handleResponseError(resp, "Failed to create payment order");
   return (await resp.json()) as CreateOrderResponse;
 }
 
@@ -222,7 +268,7 @@ export async function verifyRazorpayPayment(
     "Content-Type": "application/json",
     ...(await authHeader()),
   };
-  const resp = await fetch("/api/payments/verify", {
+  const resp = await fetch(apiUrl("/api/payments/verify"), {
     method: "POST",
     headers,
     body: JSON.stringify({
@@ -232,10 +278,7 @@ export async function verifyRazorpayPayment(
       tier,
     }),
   });
-  if (!resp.ok) {
-    const errText = await resp.text();
-    throw new Error(errText || "Payment verification failed");
-  }
+  if (!resp.ok) await handleResponseError(resp, "Payment verification failed");
   return (await resp.json()) as VerifyPaymentResponse;
 }
 
@@ -244,11 +287,11 @@ export async function verifyRazorpayPayment(
 // -----------------------------------------------------------------
 
 export async function listUserApiKeys(): Promise<ApiKeyItem[]> {
-  const resp = await fetch("/api/user/keys", {
+  const resp = await fetch(apiUrl("/api/user/keys"), {
     method: "GET",
     headers: await authHeader(),
   });
-  if (!resp.ok) throw new Error(await resp.text());
+  if (!resp.ok) await handleResponseError(resp, "Failed to list API keys");
   return (await resp.json()) as ApiKeyItem[];
 }
 
@@ -257,21 +300,21 @@ export async function createUserApiKey(name: string): Promise<CreateApiKeyRespon
     "Content-Type": "application/json",
     ...(await authHeader()),
   };
-  const resp = await fetch("/api/user/keys", {
+  const resp = await fetch(apiUrl("/api/user/keys"), {
     method: "POST",
     headers,
     body: JSON.stringify({ name }),
   });
-  if (!resp.ok) throw new Error(await resp.text());
+  if (!resp.ok) await handleResponseError(resp, "Failed to create API key");
   return (await resp.json()) as CreateApiKeyResponse;
 }
 
 export async function deleteUserApiKey(keyId: string): Promise<void> {
-  const resp = await fetch(`/api/user/keys/${encodeURIComponent(keyId)}`, {
+  const resp = await fetch(apiUrl(`/api/user/keys/${encodeURIComponent(keyId)}`), {
     method: "DELETE",
     headers: await authHeader(),
   });
-  if (!resp.ok) throw new Error(await resp.text());
+  if (!resp.ok) await handleResponseError(resp, "Failed to delete API key");
 }
 
 export const revokeUserApiKey = deleteUserApiKey;
@@ -281,29 +324,31 @@ export const revokeUserApiKey = deleteUserApiKey;
 // -----------------------------------------------------------------
 
 export async function listScreeningHistory(): Promise<ScreeningHistoryItem[]> {
-  const resp = await fetch("/api/history", {
-    method: "GET",
-    headers: await authHeader(),
-  });
-  if (!resp.ok) return [];
-  return (await resp.json()) as ScreeningHistoryItem[];
+  try {
+    const resp = await fetch(apiUrl("/api/history"), {
+      method: "GET",
+      headers: await authHeader(),
+    });
+    if (!resp.ok) return [];
+    return (await resp.json()) as ScreeningHistoryItem[];
+  } catch {
+    return [];
+  }
 }
 
 export async function loadScreeningHistory(batchId: string): Promise<ScreeningReport> {
-  const resp = await fetch(`/api/history/${encodeURIComponent(batchId)}`, {
+  const resp = await fetch(apiUrl(`/api/history/${encodeURIComponent(batchId)}`), {
     method: "GET",
     headers: await authHeader(),
   });
-  if (!resp.ok) throw new Error(await resp.text());
+  if (!resp.ok) await handleResponseError(resp, "Failed to load history batch");
   return (await resp.json()) as ScreeningReport;
 }
 
 export async function deleteScreeningHistory(batchId: string): Promise<void> {
-  const resp = await fetch(`/api/history/${encodeURIComponent(batchId)}`, {
+  const resp = await fetch(apiUrl(`/api/history/${encodeURIComponent(batchId)}`), {
     method: "DELETE",
     headers: await authHeader(),
   });
-  if (!resp.ok) throw new Error(await resp.text());
+  if (!resp.ok) await handleResponseError(resp, "Failed to delete history record");
 }
-
-

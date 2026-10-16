@@ -12,11 +12,13 @@ import {
   deleteUserApiKey,
 } from "@/lib/api";
 import { openRazorpayCheckout } from "@/lib/razorpay";
+import { useToast } from "@/context/ToastContext";
 import type { UserQuota, PlanTier, ApiKeyItem, CreateApiKeyResponse } from "@/lib/types";
 
 type AccountTab = "credits" | "billing" | "api_keys" | "settings";
 
 export default function AccountDashboardPage() {
+  const { showError, showSuccess } = useToast();
   const [activeTab, setActiveTab] = useState<AccountTab>("api_keys");
   const [pricingOpen, setPricingOpen] = useState(false);
   const [dropdownOpen, setDropdownOpen] = useState(false);
@@ -92,8 +94,9 @@ export default function AccountDashboardPage() {
       setCreatedKey(res);
       setNewKeyName("");
       refreshKeys();
+      showSuccess("API Key Generated", "Your new API key is ready. Make sure to copy it now.");
     } catch (err: any) {
-      alert("Failed to create API key: " + err.message);
+      showError("Failed to Create API Key", err.message);
     }
   }
 
@@ -104,8 +107,9 @@ export default function AccountDashboardPage() {
     try {
       await deleteUserApiKey(keyId);
       refreshKeys();
+      showSuccess("API Key Deleted", "The API key was revoked successfully.");
     } catch (err: any) {
-      alert("Failed to delete API key: " + err.message);
+      showError("Failed to Delete API Key", err.message);
     }
   }
 
@@ -138,7 +142,7 @@ export default function AccountDashboardPage() {
             learn more here
           </a>
           , and visit our{" "}
-          <a href="#" className="text-[#0066FF] hover:underline font-semibold">
+          <a href="/" className="text-[#0066FF] hover:underline font-semibold">
             API Documentation
           </a>
           .
@@ -564,7 +568,7 @@ export default function AccountDashboardPage() {
 
                 <button
                   type="button"
-                  onClick={() => alert("Profile updated!")}
+                  onClick={() => showSuccess("Profile Saved", "Your profile changes have been saved successfully.")}
                   className="px-5 py-2 rounded-full text-xs font-bold text-white bg-[#0066FF] hover:bg-blue-600 transition shadow-sm"
                 >
                   Save Changes
@@ -692,10 +696,13 @@ export default function AccountDashboardPage() {
               userEmail: userEmail,
               onSuccess: (upgraded) => {
                 setQuota(upgraded);
-                alert("Payment verified successfully! Your account has been upgraded to Recruiter Pro (₹2,499 / $29). 30 screening runs & up to 100 resumes per batch unlocked.");
+                showSuccess(
+                  "Payment Verified Successfully!",
+                  "Your account has been upgraded to Recruiter Pro (₹2,499 / $29). 30 screening runs & up to 100 resumes per batch unlocked."
+                );
               },
               onError: (e) => {
-                alert("Payment failed or cancelled: " + e.message);
+                showError("Payment Failed", e.message);
               },
             });
           }
