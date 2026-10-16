@@ -1,0 +1,17 @@
+name: Keep Backend Alive
+
+on:
+  schedule:
+    # Runs every 5 minutes to prevent Render free-tier idle spin-down
+    - cron: "*/5 * * * *"
+  workflow_dispatch:
+
+jobs:
+  keepalive:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ping Render Backend
+        run: |
+          echo "Sending keep-alive ping to Render backend..."
+          RESPONSE=$(curl -sS -w "\nHTTP_CODE:%{http_code}\nLATENCY:%{time_total}s" -m 45 https://backend-talentlens.onrender.com/health)
+          echo "$RESPONSE"
