@@ -3,6 +3,12 @@
 import shutil
 import tempfile
 import re
+import os
+import time
+import datetime
+import threading
+import urllib.request
+import logging
 from pathlib import Path
 from typing import Optional, List, Dict
 from fastapi import Depends, FastAPI, UploadFile, File, Form, HTTPException, Request, Header
@@ -12,6 +18,8 @@ from pydantic import BaseModel
 from slowapi import Limiter, _rate_limit_exceeded_handler
 from slowapi.util import get_remote_address
 from slowapi.errors import RateLimitExceeded
+
+logger = logging.getLogger("talentlens.api")
 
 from src.auth import AuthUser, get_current_user, is_auth_configured
 from src.config import settings
@@ -114,6 +122,51 @@ def health_check():
         "auth_configured": is_auth_configured(),
         "auth_enforced": settings.REQUIRE_AUTH,
     }
+
+
+@app.get("/ping")
+def ping_endpoint():
+    """Lightweight 200 OK ping for keep-alive services and monitoring."""
+    return {"status": "pong", "time": time.time()}
+
+
+@app.get("/keepalive")
+def keepalive_endpoint():
+    """Keepalive heartbeat endpoint called by cron/pingers to prevent idle spin-down."""
+    return {
+        "status": "awake",
+        "service": "TalentLens Candidate Screening",
+        "utc_time": datetime.datetime.now(datetime.timezone.utc).isoformat(),
+    }
+
+
+def _keepalive_worker():
+    """Background worker that periodically pings the public health check to prevent idle shutdown."""
+    target_url = os.environ.get("RENDER_EXTERNAL_URL") or "https://backend-talentlens.onrender.com"
+    health_url = f"{target_url.rstrip('/')}/health"
+    time.sleep(20)  # Initial delay for server startup
+    while True:
+        try:
+            req = urllib.request.Request(
+                health_url,
+                headers={"User-Agent": "TalentLens-KeepAlive-Worker/1.0"}
+            )
+            with urllib.request.urlopen(req, timeout=15) as resp:
+                logger.info("Keep-alive self ping status: %s", resp.status)
+        except Exception as e:
+            logger.debug("Keep-alive self ping: %s", e)
+        # Sleep for 7 minutes (420 seconds) - well below Render's 15-minute sleep threshold
+        time.sleep(420)
+
+
+@app.on_event("startup")
+def startup_keepalive():
+    """Launch background self-ping thread on cloud deployments."""
+    # Always run keep-alive thread on Render or when deployed
+    if os.environ.get("RENDER") or os.environ.get("RENDER_EXTERNAL_URL") or not settings.DEBUG:
+        t = threading.Thread(target=_keepalive_worker, daemon=True, name="keepalive-worker")
+        t.start()
+        logger.info("Background keep-alive self-pinger initialized (every 7 minutes).")
 
 
 @app.get("/config.js", response_class=PlainTextResponse)

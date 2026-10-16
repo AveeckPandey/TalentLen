@@ -77,6 +77,16 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     globalToastEmitter = showToast;
+    // Silent warm-up ping to wake up backend immediately on page visit
+    if (typeof window !== "undefined") {
+      try {
+        import("@/lib/api").then(({ apiUrl }) => {
+          fetch(apiUrl("/health"), { method: "GET" }).catch(() => {});
+        });
+      } catch {
+        /* best-effort */
+      }
+    }
     return () => {
       globalToastEmitter = null;
     };
