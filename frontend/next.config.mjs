@@ -10,6 +10,8 @@ const PASSTHROUGH = [
   "/results",
   "/clear",
   "/health",
+  "/ping",
+  "/keepalive",
   "/me",
   "/config.js",
   "/download_csv",

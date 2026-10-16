@@ -125,12 +125,14 @@ def health_check():
 
 
 @app.get("/ping")
+@app.get("/api/ping")
 def ping_endpoint():
     """Lightweight 200 OK ping for keep-alive services and monitoring."""
     return {"status": "pong", "time": time.time()}
 
 
 @app.get("/keepalive")
+@app.get("/api/keepalive")
 def keepalive_endpoint():
     """Keepalive heartbeat endpoint called by cron/pingers to prevent idle spin-down."""
     return {
